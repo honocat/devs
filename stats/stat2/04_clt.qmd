@@ -1,0 +1,160 @@
+---
+title: '4. 中心極限定理'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+## 中心極限定理
+
+中心極限定理（Central Limit Theorem）は、「標本サイズ（サンプルサイズ）が大きくなれば、標本平均は正規分布で近似できる」という定理である（より正確には「標本サイズを無限大にすると標本平均を標準化したものが標準正規分布に収束する」という定理である）。
+
+正規分布ではない分布から正規分布ができる。Rでシミュレーションを実行することを通じて中心極限定理を理解しよう。
+
+例として、10個のボールが入った袋を考える。ボールにはそれぞれ0から9までの数字が書かれているものとする。この袋から、ランダムに1つボールを選ぶとすると、選んだボールに書かれた数は、0から9までの整数のどれかで、0から9が選ばれる確率は等しく10分の1（0.1）である。
+
+```{r}
+#| echo: false
+
+dd <- tibble(x = 0:9, 
+             y = rep(0.1, 10))
+p <- ggplot(dd, aes(x, y)) + 
+  geom_bar(stat = "identity", width = 0.6) +
+  labs(x = "ボールに書かれた数字", 
+       y = "確率") +
+  scale_x_continuous(breaks = 0:9)
+print(p)
+```
+
+1つボールを選ぶとき、ボールに書かれている数の平均値（期待値）は、$(9 - 0) / 2 = 4.5$である。
+
+ここで、私たちはボールにどんな数が書かれているか知らないとする。この状態で、ボールにかかれている数の平均値を当てたい。
+
+もっとも単純な方法は、ボールを$n$回引いて、その平均値を当てるという方法である。
+
+まず、ボールを2回だけ引いて平均値を当てるという実験をしてみる。この実験をすると、1回目のボールの選び方は10通り、2回目のボールの選び方も10通りあるので、全部で100通りの選び方がある。2つのボールに書かれている数は0から9までの整数なので、可能な合計値は0から18までの19通りであり、平均値は「合計値/2」なので、平均値も19通りしかない。。
+
+理論的には次のような確率で、それぞれの平均値が得られる。
+
+```{r}
+#| echo: false
+
+dd <- tibble(x = seq(from = 0, to = 9, by = 0.5),
+             y = c(1:10, 9:1) / 100)
+p <- ggplot(dd, aes(x, y)) + 
+  geom_bar(stat = "identity") +
+  labs(x = "2つのボールの平均値", y = "確率") +
+  scale_x_continuous(breaks = seq(from = 0, to = 18, by = 0.5))
+print(p)
+```
+
+この図から、この実験を1回だけ行うとき、正解である4.5が選ばれる確率は0.1であることがわかる。試しにやってみる。
+
+```{r}
+bag <- 0 : 9
+exp_2 <- sample(bag, size = 2, replace = TRUE)
+mean(exp_2)
+```
+
+今回は`r mean(exp_2)`になった。
+
+では、この実験を1,000回繰り返すと「それぞれの回での平均値の分布」はどんな形になるだろうか。
+
+```{r}
+N <- 2
+trials <- 1000
+sim1 <- rep(NA, length.out = trials)
+for (i in 1:trials) {
+  experiment <- sample(bag, size = N, replace = TRUE)
+  sim1[i] <- mean(experiment)
+}
+```
+
+```{r}
+df_sim1 <- tibble(avg = sim1)
+h_sim1 <- ggplot(df_sim1, aes(x = avg)) +
+  geom_histogram(binwidth = 1,
+                 boundary = 0.5,
+                 color    = 'black') +
+  labs(x = '2個のボールの平均値',
+       y = '度数') +
+  scale_x_continuous(breaks = 0 : 9)
+plot(h_sim1)
+```
+
+これは正規分布に見えるか？
+
+$N = 10$でもやってみる。
+
+```{r}
+N <- 10
+sim2 <- rep(NA, length.out = trials)
+for (i in 1:trials) {
+  experiment <- sample(bag, size = N, replace = TRUE)
+  sim2[i] <- mean(experiment)
+}
+```
+
+```{r}
+df_sim2 <- tibble(avg = sim2)
+h_sim2 <- ggplot(df_sim2, aes(x = avg)) +
+  geom_histogram(binwidth = 0.5,
+                 color    = 'black') +
+  labs(x = '10個のボールの平均値',
+       y = '度数')
+plot(h_sim2)
+```
+
+サンプルサイズを$N = 100$してみる。
+
+```{r}
+N <- 100
+sim3 <- rep(NA, length.out = trials)
+for (i in 1:trials) {
+  experiment <- sample(bag, size = N, replace = TRUE)
+  sim3[i] <- mean(experiment)
+}
+```
+
+```{r}
+df_sim3 <- tibble(avg = sim3)
+h_sim3 <- ggplot(df_sim3, aes(x = avg)) +
+  geom_histogram(binwidth = 0.125,
+                 color    = 'black') +
+  labs(x = '100個のボールの平均値', y = '度数')
+plot(h_sim3)
+```
+
+このように、もとの分布は一様分布でも、サンプルサイズ$N$を増やすと、「平均値の分布」は正規分布に近づく。よって、サンプルサイズ$N$が十分に大きい（大まかな目安は$N \ge 100$）とき、正規分布を使って統計的推定や検定を行うことが許されている。

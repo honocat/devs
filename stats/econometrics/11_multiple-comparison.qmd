@@ -1,0 +1,399 @@
+---
+title: '11. 多重比較法'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+## 多重比較の問題
+
+多重検定の問題を確認するために、シミュレーションを実施しよう。
+
+まず、標本サイズ$N$で、$K$個の互いに独立な説明変数$x_1, x_2, \ldots, x_K$を作る。$N = 100$、$K = 20$で試してみる。
+
+```{r}
+set.seed(2021-11-12)
+N <- 100
+K <- 20
+X <- matrix(rnorm(N * K, mean = 0, sd = 2), ncol = K)
+colnames(X) <- paste0('x', 1 : K)
+myd <- as_tibble(X)
+```
+
+これらの説明変数$x_k (k = 1, 2, \ldots , K)$とは**無関係に**$y$を作り、データフレームに加える。
+
+```{r}
+myd$y <- rnorm(N)
+```
+
+このデータを使い、以下の回帰モデルを推定する。
+
+$$
+\begin{aligned}
+  & Y_i \sim \text{Normal} (\mu_i, \sigma) \\
+  & \mu_i = \beta_0 + \beta_1 x_{i1} + \cdots + \beta_K x_{iK}
+\end{aligned}
+$$
+
+ここで、$\beta_k = 0$という帰無仮説を、すべての$k (k = 1, 2, \ldots , K)$について、個別に検定するとする。そうすると、検定の対象となるファミリーは、
+
+$$
+\mathcal{F} = \{ \beta_1 = 0, \ldots , \beta_K = 0 \}
+$$
+
+となる。
+
+このシミュレーションでは、$y$をどの$x_k$とも無関係の作っているので、すべての帰無仮説が正しい。よって、このファミリーに含まれる帰無仮説は1つも棄却したくない。
+
+実際に回帰分析を行い、有意水準0.05で一つ一つの仮説を検定しよう。`y ~ .`とすると、`y`をそのデータに含まれる`y`以外のすべての変数に回帰する。
+
+```{r}
+fit <- lm(y ~ ., data = myd)
+broom::tidy(fit)
+```
+
+$p$値（`p.value`）が0.05未満の場合は、帰無仮説が**誤って棄却**されている。
+
+少なくとも1つの帰無仮説を誤って棄却するかどうかは、次のようにして調べることができる。$p$値（`p.value`）が有意水準を下回っていれば、帰無仮説が棄却される。
+
+```{r}
+pv <- broom::tidy(fit) |>
+  filter(term != '(Intercept)') |>
+  pull(p.value)
+ifelse(sum(pv < 0.05) > 0, TRUE, FALSE)
+```
+
+この結果が`TRUE`の場合、少なくとも1つの帰無仮説を誤って棄却してしまっていることを示す。`FALSE`の場合、すべての帰無仮説が「正しく」保留されているということを意味する。
+
+このシミュレーションを繰り返し実施するために、関数を作る。
+
+```{r}
+sim_mc <- function(N = 100, K = 1, alpha = 0.05) {
+  X <- matrix(rnorm(N * K, mean = 0, sd = 2), ncol = K)
+  y <- rnorm(N)
+  fit <- lm(y ~ X)
+  pv <- broom::tidy(fit) |>
+    filter(term != '(Intercept)') |>
+    pull(p.value)
+  return(ifelse(sum(pv < alpha) > 0, TRUE, FALSE))
+}
+```
+
+使ってみる。
+
+```{r}
+sim_mc(N = 100, K = 20)
+```
+
+この関数を使い、シミュレーションを実施する。繰り返し数は1万回とする。まずは、$K = 1$の場合（つまり、多重比較ではない場合）について確認する。
+
+```{r}
+res_k1 <- replicate(1e4, sim_mc(N = 100, K = 1, alpha = 0.05))
+```
+
+少なくとも1つの帰無仮説が誤って棄却される割合を計算する。
+
+```{r}
+mean(res_k1)
+```
+
+有意水準に設定した0.05に近い値が得られた。「帰無仮説が正しいのに誤って帰無仮説を棄却する確率（危険率）」が有意水準なので、この結果は当然である。
+
+次に、$K = 20$の場合について確認する。
+
+```{r}
+res_k20 <- replicate(1e4, sim_mc(N = 100, K = 20, alpha = 0.05))
+```
+
+割合は、
+
+```{r}
+mean(res_k20)
+```
+
+ファミリーの有意水準が`r mean(res_k20) |> round(2)`になった。1つひとつの検定で利用する`alpha`の値を「めったにない」と言えそうな5%にしても、全体ではめったにないとは決して言えない`r mean(res_k20) * 100`%になってしまっており、多重比較の調整が必要であることがわかる。
+
+ボンフェローニの方法で有意水準を補正するとどうなるだろうか。$K = 20$のときにファミリーの有意水準を0.05にするには、`alpha = 0.05 / 20`にすれば良いはずだ。
+
+```{r}
+bonferroni_k20 <- replicate(1e4,
+                            sim_mc(N = 100,
+                                   K = 20,
+                                   alpha = 0.05 / 20))
+```
+
+割合は、
+
+```{r}
+mean(bonferroni_k20)
+```
+
+約5%になっており、多重比較の問題は解消されていることがわかる。
+
+## ボンフェローニ補正の問題
+
+上では、すべての帰無仮説が正しい場合について考えた。では、いくつかの帰無仮説が正しくない場合にはどうなるだろうか。
+
+20個の説明変数のうち、3つは$y$に関係があるという状況でシミュレーションを行う。そのための関数を作る。
+
+```{r}
+sim_mc2 <- function(N = 100, K = 4, alpha = 0.05, type = 1) {
+  X <- matrix(rnorm(N * K, mean = 0, sd = 2), ncol = K)
+  y <- 0.8 * X[, 1] - 0.7 * X[, 2] + 0.4 * X[, 3] + rnorm(N)
+  fit <- lm(y ~ X)
+  pv <- broom::tidy(fit) |>
+    filter(term != '(Intercept)') |>
+    pull(p.value)
+  if (type == 1) ifelse(sum(pv[4 : K] < alpha) > 0, TRUE, FALSE)
+  else if (type == 2) ifelse(sum(pv[1 : 3] < alpha) == 3, FALSE, TRUE)
+  else stop('type must be either 1 or 2.')
+}
+```
+
+この関数を使い、シミュレーションを実施する。
+
+```{r}
+res_k20b <- replicate(1e4,
+                      sim_mc2(N = 50,
+                              K = 20,
+                              alpha = 0.05))
+```
+
+正しい帰無仮説のうち少なくとも1つが誤って棄却される割合は、
+
+```{r}
+mean(res_k20b)
+```
+
+ファミリーの有意水準が`r mean(res_k20b) |> round(2)`となった。一つ一つの検定で利用する`alpha`の値を「めったにない」と言えそうな5%にしても、全体では「めったにない」とは決して言えない`r mean(res_k20b) * 100`%となってしまっており、多重比較の調整が必要であることがわかる。
+
+そこで、ボンフェローニ補正を採用する。$K = 20$なので`alpha = 0.05 / 20`にすれば良い。
+
+```{r}
+bonferroni_k20b <- replicate(1e4,
+                             sim_mc2(N = 50,
+                                     K = 20,
+                                     alpha = 0.05 / 20))
+```
+
+割合は、
+
+```{r}
+mean(bonferroni_k20b)
+```
+
+約`r mean(bonferroni_k20b) * 100`%となっており、正しい帰無仮説を誤って棄却するという問題は解消されている事がわかる。
+
+では、正しくない帰無仮説は棄却できているだろうか。第2種の誤りの割合を計算したいので、`type = 2`を指定する。
+
+```{r}
+bonferroni_k20c <- replicate(1e4,
+                             sim_mc2(N = 50,
+                                     K = 20,
+                                     alpha = 0.05 / 20,
+                                     type  = 2))
+mean(bonferroni_k20c)
+```
+
+約`r mean(bonferroni_k20c)`%について、正しくない帰無仮説を少なくとも1つは棄却し損ねていることがわかる。
+
+ボンフェローニ補正を行う前についても同じ計算をする。
+
+```{r}
+res_k20c <- replicate(1e4,
+                      sim_mc2(N = 50,
+                              K = 20,
+                              alpha = 0.05 / 20,
+                              type  = 2))
+mean(res_k20c)
+```
+
+補正前には、この種の誤りは`r mean(res_k20c) * 2`%ほどしかなかったことがわかる。ボンフェローニ補正を用いると、正しい帰無仮説を誤って棄却するという間違い（第1種の誤り）が減る代わりに、正しくない帰無仮説を棄却することに失敗する（第2種の誤り）が増えるということ。
+
+## ホルムの方法
+
+ボンフェローニ補正を改良した、ホルムの方法を試してみる。
+
+ボンフェローニ補正と比較するために、データを生成して回帰分析の結果を保存する関数を作る。
+
+```{r}
+sim_mc3 <- function(N = 50, K = 4) {
+  X <- matrix(rnorm(N * K, mean = 0, sd = 2), ncol = K)
+  y <- 0.8 * X[, 1] - 0.7 * X[, 2] + 0.3 * X[, 3] + rnorm(N)
+  fit <- lm(y ~ X)
+  broom::tidy(fit) |>
+    filter(term != '(Intercept)') |>
+    select(term, estimate, p.value)
+}
+```
+
+一度使ってみる。
+
+```{r}
+set.seed(2026-1-1)
+res1 <- sim_mc3(N = 50, K = 20)
+res1
+```
+
+有意水準0.05で個々の帰無仮説が棄却されるかどうかを確かめる。
+
+```{r}
+res1$p.value < 0.05
+```
+
+最初の3つ（正しくない帰無仮説）は棄却されている。残りの17個の帰無仮説は正しいが、そのうち1つが誤って棄却されている。
+
+ボンフェローニ補正を実施するとどうなるだろうか。
+
+```{r}
+p.adjust(res1$p.value, method = 'bonferroni')
+```
+
+これらの値が、ボンフェローニ補正で検定に使うべき$p$値である。これを使って検定を行う。
+
+```{r}
+p.adjust(res1$p.value, method = 'bonferroni') < 0.05
+```
+
+補正なしだと誤って棄却してしまった正しい帰無仮説は保留されている。代わりに、補正無しでは棄却できていた正しくない帰無仮説が保留されている。
+
+`p.adjust()`でホルムの方法も利用できる。
+
+```{r}
+p.adjust(res1$p.value, method = 'holm')
+```
+
+これらの値がホルムの方法で検定に使うべき$p$値である。
+
+```{r}
+p.adjust(res1$p.value, method = 'holm') < 0.05
+```
+
+補正なしだと誤って棄却したしまった正しい帰無仮説は保留されている。ボンフェローニ補正と同様に、補正無しでは棄却できていた正しくない帰無仮説が保留されている。
+
+2つの方法の$p$値を比較してみる。
+
+```{r}
+cbind(p.adjust(res1$p.value, method = 'bonferroni'),
+      p.adjust(res1$p.value, method = 'holm'))
+```
+
+第1列がボンフェローニ補正、第2列がホルムである。比較すると、ホルムの方法の$p$値のほうが小さいことがわかる。つまり、ホルムの方法のほうが、帰無仮説を棄却しやすい。帰無仮説を棄却しにくくなるというボンフェローニ補正の欠点が改良されていることがわかる。
+
+このシミュレーションを繰り返す。帰無仮説が3つ未満しか棄却されなかったときに`TRUE`を返すことにする（厳密には、これは知りたいこととは異なる。例えば、正しくない帰無仮説がすべて保留され、正しい帰無仮説が誤って3つ棄却されるという場合も考えられる）。
+
+```{r}
+sim_b_h <- function(N = 50, K = 20, alpha = 0.05, method) {
+  res <- sim_mc3(N = N, K = K)
+  sum(p.adjust(res$p.value, method = method) < alpha) < 3
+}
+```
+
+1度使ってみる。
+
+```{r}
+sim_b_h(N = 100, K = 20, method = 'holm')
+```
+
+`FALSE`が返された場合、正しくない帰無仮説はすべて棄却された。
+
+シミュレーションを実施する。まずは、ボンフェローニ補正を試す。
+
+```{r}
+res_b <- replicate(1e4,
+                   sim_b_h(N = 50,
+                           K = 20,
+                           method = 'bonferroni'))
+```
+
+正しくない帰無仮説のうち、少なくとも1つが保留されてしまう割合を計算する。
+
+```{r}
+mean(res_b)
+```
+
+`r mean(res_b) * 100`%について、正しくない帰無仮説を棄却することに失敗している。次に、ホルムの方法。
+
+```{r}
+res_h <- replicate(1e4,
+                   sim_b_h(N = 50,
+                           K = 20,
+                           method = 'holm'))
+```
+
+割合は、
+
+```{r}
+mean(res_h)
+```
+
+`r mean(res_h) * 100`%について、正しくない帰無仮説を棄却することに失敗している。ボンフェローニ補正よりも少しだけマシなようだ。
+
+## 多重比較補正の計算法
+
+上で説明した通り、分析結果に対して多重比較の補正を行う際は、`p.adjust()`を使う。ランダムに生成したデータで実行してみよう。
+
+```{r}
+set.seed(2026-1-1)
+N <- 50
+K <- 8
+X <- matrix(rnorm(N * K, mean = 0, sd = 2), ncol = K)
+colnames(X) <- paste0('x', 1 : K)
+myd <- as_tibble(X) |>
+  mutate(y = 0.5 * x1 + 0.4 * x2 + rnorm(n()))
+```
+
+回帰分析を実行する。
+
+```{r}
+ols <- lm(y ~ .,
+          data = myd)
+```
+
+係数の推定値、補正前の$p$値、ボンフェローニ補正による$p$値、ホルムの方法による$p$値を並べて表示する。
+
+```{r}
+ols |>
+  broom::tidy() |>
+  filter(term != '(Intercept)') |>
+  select(term, estimate, p.value) |>
+  mutate(Bonferroni = p.adjust(p.value, method = 'bonferroni'),
+         Holm       = p.adjust(p.value, method = 'holm')) |>
+  rename(`説明変数` = term,
+         `推定値`   = estimate,
+         `p値`      = p.value)
+```
+
+それぞれの$p$値が有意水準を下回る場合について、帰無仮説を棄却する。

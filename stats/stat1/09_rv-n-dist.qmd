@@ -1,0 +1,290 @@
+---
+title: '9. 確率変数と確率分布'
+subtitle: ''
+author: 'honocat'
+date: "`r Sys.Date()`"
+execute:
+  echo: true 
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+# Rで確率分布を使う
+
+## 一様分布
+
+$$
+X \sim \text{Uniform} (a, b)
+$$
+
+```{r}
+a1 <- runif(n = 100, min = 0, max = 12)
+```
+
+```{r}
+df1 <- tibble(a1)
+h1 <- ggplot(df1,
+             aes(x = a1,
+                 y = after_stat(density))) +
+  geom_histogram(binwidth = 0.5,
+                 boundary = 0,
+                 fill     = 'royalblue',
+                 color    = 'black') +
+  labs(x = '時計盤上のルーレットからの乱数',
+       y = '密度')
+plot(h1)
+```
+
+生成する乱数の個数を増やしてみる。
+
+```{r}
+a2 <- runif(10000, 0, 12)
+df2 <- tibble(a2)
+h2 <- ggplot(df2,
+             aes(x = a2,
+                 y = after_stat(density))) +
+  geom_histogram(binwidth = 0.5,
+                 boundary = 0,
+                 fill     = 'royalblue',
+                 color    = 'black') +
+  labs(x = '時計盤上のルーレットからの乱数',
+       y = '密度')
+plot(h2)
+```
+
+理論的に想定される密度曲線を図に重ねてみる。
+
+```{r}
+x_pt <- seq(from = 0, to = 12, length.out = 10000)
+```
+
+$x$の各点に対する密度$f_X(x)$を求める。
+
+```{r}
+dens <- dunif(x_pt, 0, 12)
+```
+
+`x`（$x$）と`dens`（$f_X(x)$）をデータフレームに。
+
+```{r}
+D_unif <- tibble(x = x_pt, dens = dens)
+```
+
+```{r}
+h2_b <- h2 +
+  geom_line(data = D_unif,
+            aes(x = x_pt,
+                y = dens),
+            color = 'salmon')
+plot(h2_b)
+```
+
+$X$がある実数$x$以下の値を取る確率は、分布関数$F_X(x)$で求めることができるが、Rでは次のようにする。$X \le 3$となる確率：
+
+```{r}
+punif(3, min = 0, max = 12)
+```
+
+$X$が4.8以上、11.5以下になる確率：
+
+```{r}
+punif(11.5, 0, 12) - punif(4.8, 0, 12)
+```
+
+逆分布関数を使うと、分布関数の値が$u$以上になる最小の$x$の値を求めることができる。例えば、分布関数の値が0.5以上になるのは、
+
+```{r}
+qunif(0.5, 0, 12)
+```
+
+である。
+
+連続ではない一様分布（離散一様分布; discrete uniform distribution）からの乱数は、`sample()`で生成できる。
+
+```{r}
+a3 <- sample(1:6, size = 10000, replace = TRUE)
+df3 <- tibble(a3)
+p3 <- ggplot(df3,
+             aes(x = a3,
+                 y = after_stat(count) / nrow(df3))) +
+  geom_bar(width = 0.5) +
+  labs(x = '出た目', y = '確率') +
+  scale_x_continuous(breaks = 1:6)
+plot(p3)
+```
+
+これは棒グラフであり、縦軸は密度ではなく確率。離散型の場合、確率関数（確率質量関数）によって確率変数が特定の値をとる確率を考えることができるので、縦軸に確率をとったグラフを描くことができる。
+
+- 確率関数（確率質量関数）$f(x)$：入力が$x$だとすると、$x$を取る確率を返す関数。すべての$x$における$f(x)$を足し合わせると1になる。
+- 確率変数：数値ではない「事象」を計算可能な「数値」に変換する関数。「1の目が出た」という結果を「1」という数値に対応させる。
+
+**1. 確率変数$X$が特定の値をとる**
+
+試行が行われる（サイコロを振る）。その結果（事象）を、確率変数$X$という関数が数値$x$に変換する（例：「3の目が出た」という事象 &rarr; 3という数値）。この3のように、確率変数$X$が取る得る数値を「特定の値」と表現している。
+
+**2. 確率を考えることができる**
+
+私たちが本当に知りたいのは、その特定の値が出る確率$P (X = x)$。しかし、確率は事象（結果）に付随するものなので、数値$x$から直接確率を計算する関数が必要。
+
+**3. 確率関数（確率質量関数）によって**
+
+ここで確率関数$f(x)$。入力値$x$が出る確率を返す。
+
+**確率関数は「何が起こったか」を数値化し、確率関数はその数値が「どれくらいの頻度で起こるか」を定義する。**
+
+## 二項分布
+
+結果が成功か失敗のみで、成功確率$\theta$で一定であるような試行を$N$回繰り返したとき、その成功確率の分布を「試行回数$N$で成功確率$\theta$の二項分布（binomial distribution）」と呼ぶ。
+
+$$
+X \sim \text{Binomial} (N, \theta)
+$$
+
+理論的には、二項分布の平均値（期待値）は$N \theta$、分散は$N \theta (1 - \theta)$になる。したがって、標準偏差は$\sqrt{N \theta (1 - \theta)}$になる。また、最小値は0、最大値は$N$。
+
+成功確率0.4の試行を10回繰り返す実験を8回行う。
+
+```{r}
+rbinom(n = 8, size = 10, prob = 0.4)
+```
+
+確率変数$X$が、$X \sim \text{Binomial} (10, 0.3)$のとき、確率変数$X$をランダムに1,000個生成してみる。
+
+```{r}
+x <- rbinom(n = 1000, size = 10, prob = 0.3)
+```
+
+離散型分布縦軸に確率をとって棒グラフが描ける。
+
+```{r}
+D_bin <- tibble(x)
+h_binom <- ggplot(D_bin, aes(x = x, y = after_stat(count) / nrow(D_bin))) +
+  geom_bar(width = 0.5) +
+  scale_x_continuous(breaks = 0 : 10,
+                     minor_breaks = NULL) +
+  labs(y = '確率')
+plot(h_binom)
+```
+
+理論的に想定される密度曲線を重ねてみる。$X$が取りうる値は0から10まで。
+
+```{r}
+x_pt <- 0:10
+```
+
+$x$の各点に対応する密度$f_X (x)$を計算する（本当は密度ではなく確率）。
+
+```{r}
+dens <- dbinom(x_pt, size = 10, prob = 0.3)
+D_binom <- tibble(x = x_pt, dens = dens)
+
+h_binom_b <- h_binom +
+  geom_line(data = D_binom,
+            aes(x = x, y = dens),
+            color = 'salmon')
+plot(h_binom_b)
+```
+
+$X$がある実数$x$以下の値を取る確率は、分布関数$F_X (x)$で求めることができる。3以下の確率：
+
+```{r}
+pbinom(3, size = 10, prob = 0.3)
+```
+
+4以上、6以下の確率：
+
+```{r}
+pbinom(6, size = 10, prob = 0.3) - pbinom(4, size = 10, prob = 0.3)
+```
+
+逆分布関数。分布関数の値が0.5以上：
+
+```{r}
+qbinom(0.5, size = 10, prob = 0.3)
+```
+
+## 正規分布
+
+確率変数$X$が平均$\mu$、標準偏差$\sigma$の正規分布に従うとき、
+
+$$
+X \sim \text{Normal} (\mu, \sigma)
+$$
+
+標準正規分布から100個の乱数を生成してみる。
+
+```{r}
+b1 <- rnorm(n = 100)
+
+df_n1 <- tibble(b1)
+h_n1 <- ggplot(df_n1, aes(x = b1, y = after_stat(density))) +
+  geom_histogram(color = 'black', fill = 'dodgerblue') +
+  labs(x = '標準正規分布からの乱数', y = '密度')
+plot(h_n1)
+```
+
+$X \sim \text{Normal} (10, 2)$とする。
+
+```{r}
+b3 <- rnorm(n = 10000, mean = 10, sd = 2)
+df_n3 <- tibble(b3)
+h_n3 <- ggplot(df_n3, aes(x = b3, y = after_stat(density))) +
+  geom_histogram(color = 'black', fill = 'dodgerblue') +
+  labs(x = 'Normal(10, 2)からの乱数', y = '密度')
+plot(h_n3)
+```
+
+理論的に想定される密度曲線を重ねてみる。
+
+```{r}
+x_pt <- seq(from = 2, to = 18, length.out = 10000)
+```
+
+$x$の各点に対応する密度$f_X (x)$を計算する。
+
+```{r}
+dens <- dnorm(x_pt, mean = 10, sd = 2)
+D_nml <- tibble(x = x_pt, dens = dens)
+h_n3_b <- h_n3 +
+  geom_line(data = D_nml,
+            aes(x = x, y = dens),
+            color = 'salmon',
+            linewidth = 1.2)
+plot(h_n3_b)  
+```
+
+正規分布は実数全体を取り得る。分布関数が1となるのは、
+
+```{r}
+qnorm(1, mean = 10, sd = 2)
+```
+
+実数の範囲で$F(x)$が1となることは決してない。

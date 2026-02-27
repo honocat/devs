@@ -1,0 +1,214 @@
+---
+title: '9. 分析結果の提示方法'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+pacman::p_load('tidyverse',
+               'broom',
+               'coefplot',
+               'modelsummary',
+               'tinytable',
+               'texreg')
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+```{r}
+HR09 <- read_csv('data/hr-data.csv') |>
+  mutate(experience = as.numeric(status == '現職' | status == '元職')) |>
+  filter(year == 2009,
+         !is.na(expm))
+```
+
+4つの回帰モデルを推定しておく。
+
+```{r}
+fit1 <- lm(voteshare ~ experience, data = HR09)
+fit2 <- lm(voteshare ~ expm, data = HR09)
+fit3 <- lm(voteshare ~ experience + expm, data = HR09)
+fit4 <- lm(voteshare ~ experience * expm, data = HR09)
+```
+
+## 分析結果の提示
+
+### 式を書く
+
+説明変数の数がそれほど多くない場合は、式で結果を示しても良い。
+
+例えば、`fit1`の推定結果は、次の式にまとめられる。
+
+```{r}
+tidy(fit1)
+```
+
+
+$$
+\begin{aligned}
+  \widehat{ \text{得票率} }
+    = & `r coef(fit1)[1] |> round(2)`
+      & + `r coef(fit1)[2] |> round(2)`
+      & \cdot \text{議員経験} \\
+  & (`r summary(fit1)$coefficients[1, 2] |> round(2)`)
+    & (`r summary(fit1)$coefficients[2, 2] |> round(2)`) &
+\end{aligned}
+$$
+
+ただし、カッコ内は標準誤差である。
+
+これに加え、サンプルサイズと決定係数（重回帰なら自由度調整済み決定係数）を表示する必要がある。サンプルサイズは`length(fit1$residuals)`で、決定係数は`summary(fit1)$r.squared`、自由度調整済み決定係数は`summary(fit1)$adj.r.squared`で表示することができる。
+
+さらに、信頼区間も表示することが望ましい。
+
+```{r}
+confint(fit1, level = 0.95)
+```
+
+よって、議員経験の回帰係数の95%信頼区間は[`r confint(fit1, level = 0.95)[2, 1] |> round(2)`, `r confint(fit1, level = 0.95)[2, 2] |> round(2)`]である。
+
+### 表を作る
+
+#### (1) modelsummary
+
+回帰分析の結果を表にするには、`modelsummary`パッケージの`msummary()`（または、`modelsummary()`）関数を使う。
+
+基本的な使い方は、
+
+```{r}
+msummary(fit1,
+         title = '得票率を結果変数とする単回帰の推定結果')
+```
+
+1. 表のキャプションは上に置きたい
+1. 知らない統計量は書かない
+
+そこで、コードを書き直す。
+
+```{r}
+msummary(fit1,
+         title = '得票率を結果変数とする単回帰の推定結果',
+         gof_map = tibble(raw = c('nobs', 'r.squared'),
+                          clean = c('N', 'R<sup>2</sup>'),
+                          fmt = c(0, 3))) |>
+  style_tt(bootstrap_class = 'table caption-top')
+```
+
+日本語で論文・レポートを書くなら、表の中身も日本語にすべき。
+
+```{r}
+msummary(fit1,
+         title = '得票率を結果変数とする単回帰の推定結果',
+         coef_rename = c('切片', '議員経験'),
+         gof_map = tibble(raw   = c('nobs', 'r.squared'),
+                          clean = c('R^2', '観測数'),
+                          fmt   = c(3, 0))) |>
+  style_tt(bootsrap_class = 'table caption-top')
+```
+
+複数のモデルを1つの表にまとめたいときは以下のようにする。
+
+```{r}
+msummary(list(`モデル1` = fit1,
+              `モデル2` = fit2,
+              `モデル3` = fit3,
+              `モデル4` = fit4),
+         title = '得票率を結果変数とする単回帰の推定結果',
+         coef_rename = c('切片', '議員経験', '選挙費用（百万円）',
+                         '議員経験 x 選挙費用'),
+         gof_map = tibble(raw   = c('r.squared', 'adj.r.squared', 'nobs'),
+                          clean = c('R^2',
+                                    '自由度調節済みR^2',
+                                    '観測数'),
+                          fmt   = c(3, 3, 0))) |>
+  style_tt(bootstrap_class = 'table caption-top')
+```
+
+#### (2) texreg
+
+### 図を作る
+
+キャタピラプロットと呼ばれる図を使って、回帰分析の結果を図示しよう。
+
+1つのモデルを図示するときは、`coefplot::coefplot()`を使う。チャンクオプションに`fig.cap: 'caption'`を加える。
+
+```{r}
+#| fit.width: 3
+#| fig.height: 5
+#| fig.cap: 'モデル3の推定結果'
+
+plt_fit3 <- coefplot(
+  fit3,
+  lwdOuter  = 1,
+  intercept = FALSE,
+  title     = '係数の推定値：結果変数は得票率（%）',
+  xlab      = '係数の推定値',
+  ylab      = '説明変数',
+  newNames  = c(experience = '議員経験', expm = '選挙費用（百万円）')
+)
+plot(plt_fit3)
+```
+
+回帰係数の大きさがバラバラな場合、変数を非表示にできる。例えば、議員経験は交絡変数として含めたとしよう。
+
+```{r}
+plt_fit3b <- coefplot(
+  fit3,
+  lwdOuter     = 1,
+  coefficients = c('expm'),
+  intercept    = FALSE,
+  title        = '係数の推定値：結果変数は得票率（%）',
+  xlab         = '係数の推定値',
+  ylab         = '説明変数',
+  newNames     = c(expm = '選挙費用（百万円）')
+)
+plot(plt_fit3b)
+```
+
+複数のモデルを1つの図に示すときは、`coefplot::multiplot()`を使う。
+
+```{r}
+plt_multi <- multiplot(
+  fit1, fit2, fit3, fit4,
+  intercept   = FALSE,
+  numberAngle = 0,
+  title       = '係数の推定値：結果変数は得票率（%）',
+  xlab        = '係数の推定値',
+  ylab        = '説明変数',
+  newNames    = c(experience        = '議員経験',
+                  expm              = '選挙費用（百万円）',
+                  'experience:expm' = '議員経験x選挙費用') +
+    scale_color_brewer(palette = 'Set1',
+                       name    = '',
+                       labels  = paste('モデル', 1 : 4))
+)
+plot(plt_multi)
+```
+

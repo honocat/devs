@@ -1,0 +1,154 @@
+---
+title: '練習問題1: 正規分布'
+subtitle: ''
+author: 'honocat'
+date: 'today'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+pacman::p_load(tidyverse, cmdstanr, posterior)
+options(mc.cores = parallel::detectCores())
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+日本の成人男性からランダムに抽出した10人の身長のデータが以下のものであるとする。
+
+```{r}
+height <- c(162, 170, 172, 190, 188,
+            177, 173, 187, 163, 175)
+```
+
+このデータの平均身長は、
+
+```{r}
+mean(height)
+```
+
+このデータを用いて、日本の成人男性の平均身長を推測しなさい（この設定では、「正しい」答えは$\theta = 170$である）。ただし、以下のモデルを仮定する。
+
+$$
+\begin{aligned}
+  H_n    & \sim \text{Normal} (\theta, \sigma) \\
+  \theta & \sim \text{Normal} (\mu, \tau)
+\end{aligned}
+$$
+
+## 回答
+
+### model
+
+まず、各パラメタ（$\sigma$,$\mu$, $\tau$）の事前分布を設定する。まず知識により、日本の成人男性の平均身長は170cmであることを知っているため、$\mu$の事前分布は平均が170、標準偏差が2の正規分布とする。また、$\tau$と$\sigma$の事前分布には、どちらも尺度パラメタが1のハーフコーシー分布を採用する。よって、統計モデルは以下となる。
+
+$$
+\begin{aligned}
+  H_n    & \sim \text{Normal} (\theta, \sigma)
+    & \text{（尤度）} \\
+  \theta & \sim \text{Normal} (\mu, \tau) 
+    & \text{（事前分布）} \\
+  \sigma & \sim \text{Half-Cauchy} (0, 1)
+    & \text{（事前分布）} \\
+  \mu    & \sim \text{Normal} (170, 2)
+    & \text{（超事前分布）} \\
+  \tau   & \sim \text{Half-Cauchy} (0, 1)
+    & \text{（超事前分布）} \\
+\end{aligned}
+$$
+
+このモデルをStanで書くと以下のようになる。
+
+```
+model {
+  H ~ normal(theta, sigma);
+  theta ~ normal(mu, tau);
+  sigma ~ cauchy(0, 1);
+  mu ~ normal(170, 2);
+  tau ~ cauchy(0, 1);
+}
+```
+
+Stanファイルをコンパイルする。
+
+```{r}
+ex1_stan <- cmdstan_model('stan/ex1.stan')
+```
+
+続いて、Stanにデータを渡すためにリストを作成する。
+
+```{r}
+ex1_data <- list(
+  N = length(height),
+  H = height
+)
+```
+
+作成したStanファイルとデータのリストを使って、MCMCを実行する。
+
+```{r}
+#| result: hide
+
+ex1_fit <- ex1_stan$sample(
+  data = ex1_data,
+  seed = 011011,
+  chains = 4,
+  refresh = 1000,
+  iter_warmup = 1000,
+  iter_sampling = 3000
+)
+```
+
+```{r}
+all(ex1_fit$summary()[, 'rhat'] < 1.1, na.rm = TRUE)
+```
+
+
+```{r}
+ex1_post <- ex1_fit$draws() |>
+  as_draws_df() |>
+  mutate(chains = as.factor(.chain))
+```
+
+
+```{r}
+ex1_post |>
+  ggplot(aes(x = .iteration,
+             y = theta,
+             group = chains)) +
+  geom_line(aes(color = chains))
+ex1_post |>
+  ggplot(aes(x = theta,
+             y = after_stat(density))) +
+  geom_histogram(color = 'black')
+```
+
+
+
+
+
+

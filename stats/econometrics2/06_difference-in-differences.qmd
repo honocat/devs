@@ -1,0 +1,340 @@
+---
+title: '6. 差分の差分法'
+subtitle: ''
+author: 'honocat'
+date: 'today'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+library(broom)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+## 最低賃金の影響
+
+まず、差分の差分（difference in differences; DID）法の仕組みを理解しよう。
+
+### Card and Krueger (1994)の研究
+
+ここでは、Card and Krueger (1994)が分析した、最低賃金の上昇が失業に与える影響の研究を例に考えよう。最低賃金が引き上げられると、雇用は減るのだろうか。Card and Krueger (1994)は、1992年にアメリカのニュージャージー州（NJ）で最低時給が4.25ドルから5.05ドルに上昇したのに対し、隣接するペンシルベニア州（PA）では最低時給の上昇がなかった事実を利用して、分析を行った。
+
+データはDavid Cardのウェブサイトで公開されている。
+
+```{r}
+#| eval: false
+
+dir.create('tmp')
+download.file(url = 'https://davidcard.berkeley.edu/data_sets/njmin.zip',
+              destfile = 'tmp/njmin.zip')
+unzip('tmp/njmin.zip', exdir = 'data')
+```
+
+```{r}
+myd <- read_table('data/public.dat', col_names = FALSE, na = '.')
+```
+
+`X47`がすべて欠測値なので削除する。
+
+```{r}
+myd <- myd |>
+  select(!X47)
+names(myd)
+```
+
+このままだと変数の区別が難しいので、変数名をつける。変数は、先程ダウンロードしたzipファイルの中にある`codebook`にかかれている。コードブックから変数名だけを抜き出したファイルが矢内勇生先生のサイトにある。
+
+```{r}
+var_names <- read_lines('https://yukiyanai.github.io/jp/classes/econometrics2/contents/data/card-krueger_vars.txt')
+names(myd) <- var_names |>
+  print()
+```
+
+コードブック（codebook）を読み、分析に使う変数をわかりやすい名前に変えて抜き出す。
+
+```{r}
+minwage <- myd |>
+  transmute(
+    state            = ifelse(STATE == 1, 'NJ', 'PA'),
+      # 州
+    fulltime_before  = EMPFT,
+      # 最低時給上昇前のフルタイム労働者の数
+    parttime_before  = EMPPT,
+      # 最低時給上昇前のパートタイム労働者の数
+    wage_before      = WAGE_ST,
+      # 最低時給前の賃金
+    fulltime_after   = EMPFT2,
+      # 最低時給上昇後のフルタイム労働者の数
+    parttime_after   = EMPPT2,
+      # 最低時給上昇後のパートタイム労働者の数
+    wage_after       = WAGE_ST2,
+      # 最低時給上昇後の賃金
+    full_prop_before = fulltime_before
+                        / (fulltime_before + parttime_before),
+    full_prop_after  = fulltime_after
+                        / (fulltime_after + parttime_after)
+  ) |>
+  na.omit() # 完全ケース分析にする
+```
+
+### 処置の確認
+
+まず、最低時給の上昇が実際に時給を引き上げたかどうかを確認しよう。そのために、賃金（時給）が5.05ドル未満のファーストフード店の割合を求める。
+
+```{r}
+minwage |>
+  group_by(state) |>
+  summarize(before  = mean(wage_before < 5.05),
+            after   = mean(wage_after < 5.05),
+            .groups = 'drop')
+```
+
+処置（NJでの最低時給引き上げ）前には、どちらの州でも大半（9割以上）の労働者の時給が5.05ドル未満である。それに対して処置後は、処置がなかったPAでの割合に大きな変化はない一方で、処置を受けたNJでは時給が5.05ドル未満なのは0.3%のみであり、基本的には最低時給が守られていることがわかる。つまり、法律上の最低時給の引き上げは、実際に時給を引き上げたことが確認できる。
+
+### 単純比較I: 個体間比較
+
+最低時給の引き上げが雇用にどのような影響を与えたか、単純比較による推定を試みよう。まず、処置具のNJとPAのフルタイム労働者の割合を比較する。
+
+```{r}
+minwage |>
+  group_by(state) |>
+  summarize(fulltime = mean(full_prop_after),
+            .groups  = 'drop')
+```
+
+単純比較を信じるなら（もちろん信じてはいけない）、最低賃金の上昇は、フルタイム労働者を4.8ポイント増やしたということになる。言い換えると、最低賃金の上昇は雇用を増やす。
+
+### 単純比較II: 前後比較
+
+次に、処置の前後でフルタイム労働者の割合を単純に比較してみる。
+
+```{r}
+minwage |>
+  filter(state == 'NJ') |>
+  summarize(across(.cols = starts_with('full_'), mean))
+```
+
+単純比較を信じるなら（もちろん信じてはいけない）、最低賃金の上昇は、フルタイム労働者を2.4ポイント増やしたということになる。言い換えると、最低賃金の上昇は雇用を増やす。
+
+### DID
+
+差分の差分によって、因果効果を推定する。まず、個体間と処置前後のフルタイム労働者の割合を表にしてみよう。
+
+```{r}
+d_full <- minwage |>
+  group_by(state) |>
+  summarize(across(.cols = starts_with('full_'), mean),
+            .groups = 'drop') |>
+  print()
+```
+
+ここで示した4つの数字の関係を可視化してみよう。
+
+```{r}
+p_did <- d_full |>
+  pivot_longer(cols         = starts_with('full'),
+               names_to     = 'time',
+               names_prefix = 'full_prop_',
+               values_to    = 'prop') |>
+  mutate(time = factor(time,
+                       levels = c('before', 'after'),
+                       labels = c('処置前', '処置後'))) |>
+  ggplot(aes(x = time, y = prop, group = state)) +
+  geom_line(aes(color = state)) +
+  geom_point(aes(shape = state)) +
+  ylim(0.25, 0.35) +
+  labs(x = '', y = 'フルタイム労働者の平均割合') +
+  scale_color_discrete(name = '') +
+  scale_shape_discrete(name = '')
+plot(p_did)
+```
+
+NJとPAのフルタイム労働者の割合に**平行トレンドが仮定できるなら**、差分の差分のよって、最低時給上昇の処置効果を推定することができる。平行トレンドがあると仮定して、差分の差分を計算してみる。
+
+```{r}
+minwage |>
+  group_by(state) |>
+  summarize(across(.cols = starts_with('full_'), mean),
+            .groups = 'drop') |>
+  mutate(dif_ba = full_prop_after - full_prop_before) |>
+  with(dif_ba[state == 'NJ'] - dif_ba[state == 'PA'])
+```
+
+差分の差分を使うと、最低賃金の引き上げは、フルタイム労働者の割合を6.2ポイント上昇させると推定される。この推定値は、個体間の単純比較や前後比較による推定値よりも大きい。
+
+### 回帰分析によるDIDの推定
+
+DIDによる推定値を、回帰分析によって得る方法を考えよう。DID回帰のために必要なのは、処置群を表すダミー変数$D$、処置後を表すダミー変数$P$とそれらの交差項である。ここまで使ってきたデータは横長（wide: 処置前と処置後の結果変数の値が異なる列にある）なので、縦長に変換する。
+
+```{r}
+minwage_long <- minwage |>
+  select(state, starts_with('full_')) |>
+  pivot_longer(cols         = starts_with('full'),
+               names_to     = 'time',
+               names_prefix = 'full_prop_',
+               values_to    = 'prop') |>
+  mutate(D = ifelse(state == 'NJ', 1, 0),
+         P = ifelse(time == 'after', 1, 0))
+```
+
+このデータフレームを使って回帰分析を行う。
+
+```{r}
+did_fit00 <- lm(prop ~ D * P, data = minwage_long)
+tidy(did_fit00) |>
+  select(term, estimate)
+```
+
+得られた推定値のうち、`D:P`（$D$と$P$の交差項）の係数が、DIDによる推定値（先程計算した差の差の値と同じ）であることがわかる。
+
+このように、DID推定値は回帰分析によって得ることができる。交絡因子が想定される場合には、交絡を回帰式に含めた重回帰分析を行う。
+
+## 法定飲酒年齢の影響
+
+### Angrist and Pischke (2015)の例
+
+Angrist and Pischke (2015)の5.2節（pp.191-203）にある、法定飲酒年齢（minimum legal drinking age; MLDA）の変更が18歳から20歳までの若者の死に与える影響を分析してみる。
+
+データは、[Mastering 'Metrics](https://masteringmetrics.com/)から入手できる。
+
+```{r}
+#| eval: false
+
+download.file(
+  url = 'https://masteringmetrics.com/wp-content/uploads/2015/01/deaths.dta',
+  destfile = 'data/deaths.dta'
+)
+```
+
+```{r}
+MLDA <- haven::read_dta('data/deaths.dta')
+```
+
+分析に必要なデータは一部なので、その部分を抜き出す。Angrist and Pischke (2015)は、(1)すべての死; All deaths (dtype = 1)、(2)自動車事故による死; Motor vehicle accidents (dtype = 2)、(3)自殺; Suicide (dtype = 3)、(4)内臓疾患による死; All internal causes (dtype = 6)の4種類の死を結果変数としているが、ここでは(1)のみを扱う。
+
+```{r}
+myd <- MLDA |>
+  filter(year  <= 1983,
+         agegr == 2,    # 18-21 years old
+         dtype == 1) |> # all deaths
+  mutate(state    = factor(state),
+         year_fct = factor(year))
+```
+
+このデータは、州（state）と年（year）の組み合わせが1つひとつの行を構成する州-年パネル（state-year panel）である。州の数と観測期間の数を確認しよう。
+
+```{r}
+myd |>
+  summarize(across(.cols = c(state, year),
+                   .fns  = n_distinct))
+```
+
+対象となる州は51（50州とワシントンD.C.）、年は14期（14年）あることがわかる。
+
+分析に使う結果変数は`mrate`（死亡率; mortality rate）である。10万人あたりの死者数が記録されている。分布を確認しておこう。
+
+```{r}
+hist_mrate <- ggplot(myd,
+                     aes(x = mrate,
+                         y = after_stat(density))) +
+  geom_histogram(color = 'black', binwidth = 10) +
+  labs(x = '死者数（10万人あたり）', y = '確率密度')
+plot(hist_mrate)
+```
+
+死亡率の時系列変化を可視化する。
+
+```{r}
+ts_mrate <- ggplot(myd,
+                   aes(x     = year,
+                       y     = mrate,
+                       group = state)) +
+  geom_line() +
+  labs(x = '年', y = '死者数（10万人辺り）')
+plot(ts_mrate)
+```
+
+上の最低賃金の例で見たように、DIDに必要な説明変数は、個体の差（処置群と統制群の区別）を表す$D$、時間（処置・施策が実施される前後の区別）を表す$P$、処置を受けたあとの観測値であることを示す$D \times P$の3つだった。
+
+この分析では、個体の差には州を表す`state`が、時間には年を表す`year_fct`が使える（`year`をそのまま使うと数値として扱われてしまうので、factor型の`year_fct`を使う）。しかし、処置後の観測値であるかどうかは、これら2つの交差項では表現できない。
+
+この分析で考える処置（介入）はMLDAの変更であるが、MLDAは18歳、19歳、20歳21歳のいずれかである。また、MLDAが変更されるタイミングは州によって異なる。さらに、（少なくとも理論的には）複数回のMLDAの変更も可能である。
+
+そこで、このデータセットには処置変数として`legal`が用意されている。この変数は、特定の年の特定の州で、18歳から20歳までの人口のうち何割が合法的に飲酒できるかを表す。例えば、$t$年の$s$州でMLDAが21歳だとすると、20歳以下で合法的に飲酒できるものはいないので、この変数の値は0となる。MLDAが18歳なら、18歳以上の全員が合法的に飲酒できるので、この変数は1となる（さらに、年の途中でMLDAが変更された場合には、その期間に応じて値が調整される）。この値が大きいほど、若者（18-20歳）がアルコールにアクセスしやすいということを意味する。MLDAを引き下げるという処置（施策）を実行すると、`legal`の値が大きくなるということである。
+
+### DID回帰
+
+分析に使う変数が揃ったので、差分の差分を利用した回帰分析によって、MLDAの平均処置効果を推定する。`state`は51州を表すカテゴリ変数、`year_fct`は14年のうちいずれかの年を表すカテゴリ変数であるが、参照カテゴリを用意する代わりに回帰式の**formulaに`0`を書くことで切片なしのモデルを推定**する。
+
+```{r}
+fit_ap0 <- lm(mrate ~ 0 + legal + state + year_fct,
+              data = myd)
+tidy(fit_ap0) |>
+  select(term, estimate, std.error) |>
+  filter(term == 'legal')
+```
+
+変数`legal`の効果が`r coef(fit_ap0)[1] |> round(2)`と推定された。これが平均処置効果である。これは、18-20歳の人々がアルコールを摂取できない状況から摂取できる状況に変化すると、10万人あたりの死者数が約11人増えるということを意味する。言い換えると、MLDAを下げると、酒を飲めるようになった年齢の人たちのなかで死者が増える。
+
+これでAngrist and Pischke (2015: 196)の表5.2と同じ推定値が得られたが、標準誤差が異なる。ここで得た標準誤差のほうが小さい。それは、この分析では同一州内の観測値が似ているという問題を考慮していないため、不確実性を低く見積もってしまっているからである。
+
+そこで、州というクラスタを考慮に入れた標準誤差（cluster-robust standard error）を求めよう。そのために、`estimatr::lm_robust()`を使う。`lm_robust()`でクラスタ標準誤差を得るためには、`lm()`を使うときに指定する無いように加え、`cluster`と`se_type`を指定する。`cluster`には、クラスタを表す変数を指定する。ここでは、`cluster = state`とする。`se_type`には、標準誤差を計算する方法を指定する。既定値は`CR2`だが、ここではAngrist and Pischke (2015)と同じ結果を得るために、Stataと同じ計算方法である`stata`を指定する。
+
+```{r}
+fit_ap1 <- estimatr::lm_robust(
+  mrate    ~ 0 + legal + state + year_fct,
+  data     = myd,
+  clusters = state,
+  se_type  = 'stata'
+)
+tidy(fit_ap1) |>
+  select(term, estimate, std.error) |>
+  filter(term == 'legal')
+```
+
+`legal`の係数の推定値は先程とまったく同じであるが、標準誤差が先程より大きくなった。クラスタ化を考慮しない分析では、標準誤差が過小評価されていたことがうかがえる。この係数の推定値と標準誤差の値は、Angrist and Pischke (2015: 196)の表5.2の"All deaths"の行の(1)の列にある数値に一致する。
+
+### 平行トレンドの仮定
+
+DID分析では、平行トレンドが仮定されているが、分液対象となる個体と期間の両者が多い場合には仮定を緩めた分析をすることができる。個体ごとの時間トレンドの違いを説明する変数を回帰分析に加えることにより、トレンドが完全に平行でなくても、平均処置効果を推定することができるようになるのである。
+
+ここでは、それぞれの州の時間トレンドは線形（つまり、処置がない場合の死亡者数は、変化無し、単調増加、単調減少のいずれか）であることを仮定する。
+
+## シミュレーション
+
+### シミュレーションの設定
+
+### シミュレーションの繰り返し実行
+
+
+
+
+- MLDAのDID回帰は、交差項がない。なんであの回帰式で分析できるのか
+- クラスタとは

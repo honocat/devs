@@ -1,0 +1,167 @@
+---
+title: ''
+subtitle: ''
+author: ''
+date: '`r Sys.date()'
+execute:
+  echo: true
+  warning: false
+  message: false
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+### CSVデータフレームの読み込み
+
+```{r}
+myd <- read_csv("data/fake_data_01.csv")
+is.data.frame(myd)
+glimpse(myd)
+names(myd)
+ncol(myd)
+nrow(myd)
+dim(myd)
+head(myd)
+tail(myd)
+str(myd)
+```
+
+### データフレームの作成
+
+```{r}
+df1 <- data.frame(x = 1:100,
+                  y = 100:1)
+is.data.frame(df1)
+
+glimpse(df1)
+```
+
+```{r}
+df2 <- tibble(v1 = rnorm(100, mean = 0,  sd = 5),
+              v2 = rnorm(100, mean = -4, sd = 5),
+              v3 = rnorm(100, mean = 0,  sd = 1))
+is.data.frame(df2)
+
+glimpse(df2)
+```
+
+### 組み込みデータ
+
+```{r}
+data(mtcars)
+glimpse(mtcars)
+is.data.frame(mtcars)
+```
+
+## `ggplot`の基礎
+
+### 散布図
+
+```{r}
+p1_1 <- ggplot(data = mtcars,
+               mapping = aes(x = wt, y = mpg))
+plot(p1_1)
+```
+
+```{r}
+p1_2 <- p1_1 +
+  geom_point()
+plot(p1_2)
+```
+
+```{r}
+p1_3 <- p1_2 +
+  labs(x = '重量（1000 lbs）',
+       y = '燃費（Miles / US gallon）')
+plot(p1_3)
+```
+
+```{r}
+p1 <- ggplot(mtcars,
+             aes(x = wt,
+                 y = mpg)) +
+  geom_point() +
+  labs(x = '重量（1000 lbs）',
+       y = '燃費（Miles / US gallon）')
+plot(p1)
+```
+
+### ヒストグラム
+
+```{r}
+p2_1 <- ggplot(mtcars, aes(x = mpg))
+plot(p2_1)
+```
+
+```{r}
+p2_2 <- p2_1 +
+  geom_histogram()
+plot(p2_2)
+```
+
+```{r}
+p2_3 <- p2_1 +
+  geom_histogram(binwidth = 2.5)
+plot(p2_3)
+```
+
+```{r}
+p2_4 <- p2_1 +
+  geom_histogram(binwidth = 2.5,
+                 color    = 'black')
+plot(p2_4)
+```
+
+```{r}
+p2_5 <- p2_1 +
+  geom_histogram(binwidth = 2.5,
+                 color    = 'black',
+                 boundary = 5)
+plot(p2_5)
+```
+
+```{r}
+p2_6 <- p2_5 +
+  labs(x = '燃費（Miles / US gallon）',
+       y = '度数')
+plot(p2_6)
+```
+
+```{r}
+p2_dens <- ggplot(mtcars,
+                  aes(x = mpg)) +
+  geom_histogram(binwidth = 2.5,
+                 color    = 'black',
+                 fill     = 'dodgerblue',
+                 boundary = 5) +
+  labs(x = '燃費（Miles / US gallon）',
+       y = '確率密度')
+plot(p2_dens)
+```
+

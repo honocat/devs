@@ -1,0 +1,314 @@
+---
+title: '8. 回帰分析の応用'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+```{r}
+HR09 <- read_csv('data/hr-data.csv') |>
+  mutate(experience = as.numeric(status == '現職' | status == '元職')) |>
+  filter(year == 2009) |>
+  na.omit()
+```
+
+## 回帰分析で使うテクニック
+
+### 線形変換
+
+選挙費用を説明変数、得票率を結果変数とする回帰式を推定する。
+
+選挙費用を1円単位で測定した`exp`を使った回帰式は、次のように求めることができる。
+
+```{r}
+fit1 <- lm(voteshare ~ exp,
+           data = HR09)
+broom::tidy(fit1, conf.int = TRUE)
+```
+
+よって、
+
+$$
+\widehat{ \text{得票率} } = 7.71 + 0.00000308 \cdot \text{選挙費用（1円）}
+$$
+
+である。
+
+これに対し、選挙費用を100万円単位で測定した`expm`を使うと、
+
+```{r}
+fit2 <- lm(voteshare ~ I(exp / 10 ^ 6), data = HR09)
+broom::tidy(fit2, conf.int = TRUE)
+```
+
+よって、
+
+$$
+\widehat{ \text{得票率} } = 7.71 + 3.08 \cdot \text{選挙費用（100万円）}
+$$
+
+である。どちらがわかりやすいか？
+
+### 標準化
+
+$z$値で標準化した変数を使って回帰分析を行う。変数$x$の$z$値は、
+
+$$
+z_x = \frac{ x - \bar{x} }{ u_x }
+$$
+
+で求められる。ただし、$u_x$は$x$の不偏分散の平方根である。
+
+例として、選挙費用（測定単位：100万円）を標準化し、得票率を説明してみよう。
+
+```{r}
+HR09 <- HR09 |>
+  mutate(z_expm = (expm - mean(expm, na.rm = TRUE)) / sd(expm, na.rm = TRUE))
+summary(HR09$z_expm)
+```
+
+これで、`expm`の$z$値`z_expm`が得られた。この変数を利用して回帰式を求める。
+
+```{r}
+fit4 <- lm(voteshare ~ z_expm,
+           data = HR09)
+broom::tidy(fit4, conf.int = TRUE)
+```
+
+この結果は、選挙費用（100万円）が1標準偏差増えるごとに、得票率が平均して`r coef(fit4)[2] |> round(2)`ポイント上昇することを示している。切片の`r coef(fit4)[1] |> round(2)`は、選挙費用が平均値を取ったときの得票率の予測値（平均値）である。
+
+### 中心化
+
+議員経験と選挙費用で得票率を説明するモデルを考える。回帰式を求めると、
+
+```{r}
+fit5 <- lm(voteshare ~ experience * expm, data = HR09)
+broom::tidy(fit5)
+broom::glance(fit5)
+```
+
+と、なる。このとき、係数の推定値は何を表しているだろうか。特に、相互作用を表す係数には注意が必要である。
+
+説明変数を中心化してから、同様の回帰式を求めてみる。
+
+```{r}
+HR09 <- HR09 |>
+  mutate(c_experience = experience - mean(experience),
+         c_expm       = expm - mean(expm, na.rm = TRUE))
+fit5_c <- lm(voteshare ~ c_experience * c_expm,
+             data = HR09)
+broom::tidy(fit5_c, conf.int = TRUE)
+broom::glance(fit5_c)
+```
+
+まず、残差の標準偏差（`sigma`の値、すなわち12.0）と$R ^ 2$（`r broom::glance(fit5)[1] |> round()`）が説明変数を中心化する前のモデルと全く同じことを確認してほしい。これは変数の中心化を行っても、回帰式の実質的な内容に変化がないことを示している。
+
+次に、係数の意味を考えよう。切片である`r coef(fit5_c)[1] |> round(2)`が表しているのは、すべての説明変数が平均値を取ったときの得票率の予測である。中心化する前のモデルでは、すべての説明変数が0（これは非現実的でデータを代表しない値）のときの予測値が示されていたが、説明変数を中心化することによって、実質的に意味のある切片（データを代表するケースの予測値）を得ることができた。
+
+`c_experience`の係数は、選挙費用が平均値のとき、議員経験がある候補者のほうが、議員経験がない候補者より`r coef(fit5_c)[2] |> round(2)`ポイント高い得票率を得ると期待されることを示す。中心化する前のモデルでは選挙費用が0の候補者（そのような候補者は存在しない）の傾きが示されていたのに対し、ここではデータ全体を代表する傾きが示されている。
+
+`c_expm`の係数は、議員経験が平均値のとき、選挙費用を1単位（100万円）増やすごとに得票率が平均`r coef(fit5_c)[3] |> round(2)`ポイント上昇することが期待されることを示す。中心化する前のモデルでは議員経験がない候補者の傾きが示されていたのに対し、ここではデータ全体を代表する（平均的な候補者の）傾きが示されている。
+
+そして、`c_experience`と`c_expm`の交差項の係数は、議員経験がる候補者とない候補者の間には、選挙費用1単位が得票率に与える影響（傾き）の差が`r coef(fit5_c)[4] |> round(2) |> abs()`であることを示す。この値は中心化する前のモデルと同じである。
+
+### 対数変換
+
+対数変換した変数を回帰分析で利用するときは、事前に変数を変換しても良いが、分析と同時に変換することもできる。例えば、次のようにする。
+
+```{r}
+fit6 <- lm(log(voteshare) ~ expm,
+           data = HR09)
+broom::tidy(fit6, conf.int = TRUE)
+```
+
+係数の値を元の測定単位に戻したいときは、`exp()`で計算すればよい。対数変換していない説明変数である`expm`1単位の増加すなわち100万円の支出増は、得票率を
+
+```{r}
+exp(coef(fit6)[2]) - 1
+```
+
+だけ変化させる。つまり、得票率を`r exp(coef(fit6)[2]) - 1`ポイント増加させる。
+
+## 二次関数の推定
+
+教育の収益率について考える。労働経済学においてミンサー方程式（Mincer equation, Mincer earnings function）と呼ばれる、次のような式がある。
+
+$$
+\mathrm{log} ( \text{賃金}_i ) =
+  \beta_0 +
+  \beta_1 \text{修学年数}_i +
+  \beta_2 \text{就業経験}_i +
+  \beta_3 \text{就業経験}_i ^ 2 +
+  \epsilon_i
+$$
+
+ただし、「就業経験」は
+
+$$
+\text{就業経験} = \text{年齢} - \text{就学年数} - 6
+$$
+
+である。最後の項の6は、小学校に入学する年齢である。
+
+このミンサー方程式を回帰分析で推定してみよう。ここで確かめたいのは、
+
+1. 就学年数が賃金を上昇させるか（そして、どのくらい上昇させるか）
+1. 就業経験が賃金を上昇させるか（そして、どのくらい上昇させるか）
+
+であるが、就業経験の二乗項も説明変数に含まれている。これは、経験が浅いうちは、経験が賃金に与える正の効果が大きいが、年齢が上がると経験を積んでも賃金が上がりにくくなる（場合によっては下がる）ことが想定されるからである。つまり、経験が賃金に及ぼす影響は逓減すると想定されている。
+
+```{r}
+myd <- read_csv('data/fake_income.csv')
+glimpse(myd)
+```
+
+この回帰分析における結果変数は所得`income`（万円）の自然対数、説明変数は就学年数`education`、就業経験年数`experience`と就業経験年数の二乗である。
+
+```{r}
+fit_mincer <- lm(log(income) ~
+                   education + experience + I(experience ^ 2),
+                 data = myd)
+broom::tidy(fit_mincer, conf.int = TRUE)
+```
+
+
+結果変数が自然対数になっていて、就業年数（`education`）の係数の推定値が`r coef(fit_mincer)[2] |> round(2)`なので、教育の収益率は`r round(coef(fit_mincer)[2] * 100)`%ほどであることがわかる。また、$t$値（`statistic`の列の値）が2よりも大きいので、5%の有意水準でこの効果は統計的に有意であることがわかる。
+
+**問**：では、この効果は実質的に重要だろうか？
+
+就学年数の影響とは異なり、就業経験の効果は推定値を見ただけではわかりにくい。就業経験の効果は、推定値を見ただけではわかりにくい。なぜなら、就業経験年数を動かすと、就業経験年数の二乗も一緒に動いてしまうからだ。そこで、修学年数を固定し、就業経験年数と就業経験年数の二乗を動かすと、結果変数である年収の対数がどのように動くか図示してみる。
+
+まず、データ内の就学年数の平均値を求める。
+
+```{r}
+(mean_educ <- mean(myd$education))
+```
+
+次に、就業経験年数の最小値と最大値を求め、その範囲の値を取る長さ1,000のベクトルを作る。
+
+```{r}
+exper_vec <- with(myd,
+                  seq(from = min(experience),
+                      to   = max(experience),
+                      length.out = 1000))
+```
+
+就学年数を平均値に固定し、就業経験年数と就業経験年数の二乗を動かして予測値を求める。
+
+```{r}
+pred_mean <- coef(fit_mincer)[1] +
+  coef(fit_mincer)[2] * mean_educ +
+  coef(fit_mincer)[3] * exper_vec +
+  coef(fit_mincer)[4] * exper_vec ^ 2
+```
+
+就業経験年数の変化に応じて年収の自然対数がどのように変化するか図示してみる。
+
+```{r}
+dd <- tibble(exper     = exper_vec,
+             pred_mean = pred_mean)
+plt1 <- ggplot(dd, aes(x = exper, y = pred_mean)) +
+  geom_line() +
+  labs(x = '就業経験年数', y = '対数年収の予測値',
+       title = '就学年数が平均値（13.8年）のとき')
+plot(plt1)
+```
+
+これで、就業経験年数と対数年収の間にある非線形の関係が図示できた。対数年数はわかりにくいので、`exp()`でもとの単位に戻す。
+
+```{r}
+plt2 <- ggplot(dd, aes(x = exper, y = exp(pred_mean))) +
+  geom_line() +
+  labs(x = '就業経験年数', y = '年収の予測値（万円）',
+       title = '就学年数が平均値（13.8年）のとき')
+plot(plt2)
+```
+
+これで、就学年数が平均値のとき、就業経験年数と年収の間にある関係が図示できた。
+
+修学年数が最小値のときは、
+
+```{r}
+min_educ <- min(myd$education)
+pred_min <- coef(fit_mincer)[1] +
+  coef(fit_mincer)[2] * min_educ +
+  coef(fit_mincer)[3] * exper_vec +
+  coef(fit_mincer)[4] * exper_vec ^ 2
+dd$pred_min <- pred_min
+plt3 <- ggplot(dd, aes(x = exper, y = exp(pred_min))) +
+  geom_line() +
+  labs(x = '就業経験年数',
+       y = '年収の予測値（万円）',
+       title = '就学年数が最小値（9年）のとき')
+plot(plt3)
+```
+
+就学年数が最大値のときは、
+
+```{r}
+max_educ <- max(myd$education)
+pred_max <- coef(fit_mincer)[1] +
+  coef(fit_mincer)[2] * max_educ +
+  coef(fit_mincer)[3] * exper_vec +
+  coef(fit_mincer)[4] * exper_vec ^ 2
+dd$pred_max <- pred_max
+plt4 <- ggplot(dd, aes(x = exper, y = exp(pred_max))) +
+  geom_line() +
+  labs(x = '就業経験年数',
+       y = '年収の予測値（万円）',
+       title = '就学年数が最大値（18年）のとき')
+plot(plt4)
+```
+
+ひとつにまとめる。
+
+```{r}
+dd_long <- dd |>
+  pivot_longer(cols         = pred_mean : pred_max,
+               names_to     = 'education',
+               names_prefix = 'pred_',
+               values_to    = 'predicted')
+plt5 <- ggplot(dd_long,
+               aes(x = exper, y = exp(predicted),
+                   color = education)) +
+  geom_line() +
+  labs(x = '就業経験年数', y = '年収の予測値（万円）') +
+  scale_color_brewer(palette = 'Accent',
+                     name    = '就学年数',
+                     labels  = c('最大値（18年）',
+                                 '平均値（13.8年）',
+                                 '最小値（9）年'))
+plot(plt5)
+```

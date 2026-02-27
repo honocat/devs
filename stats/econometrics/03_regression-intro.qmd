@@ -1,0 +1,188 @@
+---
+title: '3. 回帰分析の基礎'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+```{r}
+HR <- read_csv('data/hr-data.csv')
+glimpse(HR)
+```
+
+衆議院議員経験があることを表すダミー変数と、選挙費用を100万（`1e6`$= 10 ^ 6$）円単位で測定する変数を作る。
+
+```{r}
+HR <- HR |>
+  mutate(experience = as.numeric(status == '現職' | status == '元職'),
+         expm       = exp / 1e6)
+```
+
+次に、データから2009年の結果だけ抜き出し、`HR09`として保存する。
+
+```{r}
+HR09 <- HR |>
+  filter(year == 2009)
+```
+
+## Rで線形回帰分析を行う
+
+### 説明変数が二値しか取らない（ダミー変数）とき（モデル1）
+
+得票率（結果変数）を議員経験（説明変数）で説明するモデルを考える。議員経験は、現職または元職の候補者なら1、そうでなければ0を取る二値（binary）変数（ダミー変数）である。このモデルを式で表すと、
+
+$$
+\text{得票率} = \beta_1 + \beta_2 \cdot \text{議員経験}_i + e_i
+$$
+
+と、なる。
+
+Rでは、`lm()`で回帰式を推定することができる。
+
+```{r}
+fit_1 <- lm(voteshare ~ experience, data = HR09)
+```
+
+基本的は結果は、`summary()`で。
+
+```{r}
+summary(fit_1)
+```
+
+`broom::tidy()`も使える。
+
+```{r}
+broom::tidy(fit_1)
+```
+
+この出力の**estimate**の列の係数の推定値（coefficient estimates）が示される。これにより、$\hat{\beta_1} =$ `r fit_1$coefficients[1] |> round(2)`, $\hat{\beta_2} =$ `r fit_1$coefficients[2] |> round(2)`が得られた。したがって、
+
+$$
+\widehat{ \text{得票率} } = 13.88 + 30.99 \cdot \text{議員経験}
+$$
+
+と、なる。
+
+傾きの値を、分散と共分散を利用して求めてみる。分散は`var()`、共分散は`cov()`で計算できる。
+
+```{r}
+with(HR09, cov(voteshare, experience) / var(experience))
+```
+
+`lm()`で求めた傾きと一致する。
+
+次に、行列計算で回帰係数を求める。結果変数の$N$次元列ベクトルを$N \times 1$行列として用意する。
+
+```{r}
+y <- matrix(HR09$voteshare, ncol = 1)
+```
+
+行列計算は、第1列がすべて1、第2列が議員経験なので、
+
+```{r}
+N <- length(y)
+X <- matrix(c(rep(1, N), HR09$experience), ncol = 2)
+```
+
+行列の掛け算は`%*%`、転置は`t()`、逆行列は`slove()`で求められるので、回帰係数`b_hat`は、
+
+```{r}
+b_hat <- t(X) %*% X |>
+  solve() %*% t(X) %*% y
+b_hat
+```
+
+`lm()`を使った場合と同じ結果が得られる。
+
+この結果を図示する。
+
+```{r}
+p1 <- ggplot(HR09, aes(x = experience, y = voteshare)) +
+  scale_x_continuous(breaks = c(0, 1)) +
+  geom_jitter(position = position_jitter(width = 0.05), size = 1) +
+  geom_smooth(method = 'lm', se = FALSE) +
+  labs(x = '議員経験', y = '得票率（%）')
+plot(p1 + ggtitle('得票率と議員経験の関係'))
+```
+
+この図に推定の不確実性を示すには、`geom_smooth(method = 'lm', se = TRUE)`とすればよい。
+
+この直線の切片である、`r fit_1$coefficients[1] |> round(2)`は、議員経験がない候補者の平均得票率（予測得票率）である。予測値の式の「議員経験」に0を代入すれば、これは明らかである。議員経験がある候補者の平均得票率（予測得票率）は「議員経験」に1を代入することで得られる。代入してみると、$13.88 + 30.99 \cdot 1 = 44.87$となる。
+
+議員経験ごとに平均得票率を求め、予測値と一致するか確かめる。
+
+```{r}
+HR09 |>
+  group_by(experience) |>
+  summarize(voteshare = mean(voteshare),
+            .groups   = 'drop')
+```
+
+このように、予測値は説明変数の値を与えられたときの、結果変数の平均値であることがわかる。
+
+
+### 説明変数が連続値をとるとき（モデル2）
+
+同様に、得票率を選挙費用（測定単位：100万円）で説明するモデルは、次のように推定できる。
+
+```{r}
+fit_2 <- lm(voteshare ~ expm, data = HR09)
+broom::tidy(fit_2)
+```
+
+傾きの値を、分散と共分散を利用して求める。`expm`には欠測値があるので、除外する。
+
+```{r}
+HR09 |>
+  filter(!is.na(expm)) |>
+  with(cov(voteshare, expm) / var(expm))
+```
+
+回帰直線を図示する。
+
+```{r}
+p2 <- ggplot(HR09, aes(x = expm, y = voteshare)) +
+  geom_point(size = 1) +
+  geom_smooth(method = 'lm', se = FALSE) +
+  labs(x = '選挙費用（100万円）', y = '得票率（%）')
+plot(p2 + ggtitle('得票率と選挙費用の関係'))
+```
+
+95%信頼区間を加える。
+
+```{r}
+p2_ci95 <- p2 + geom_smooth(method = 'lm')
+plot(p2_ci95 + ggtitle('得票率と選挙費用の関係'))
+```

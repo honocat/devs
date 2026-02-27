@@ -1,0 +1,290 @@
+---
+title: '12. 2つの変数の関係を理解する'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+データの入手。
+
+```{r}
+myd <- read_csv('data/fake_bivariate.csv')
+names(myd)
+glimpse(myd)
+```
+
+## 質的変数同士の関係を調べる
+
+### 質的変数
+
+`myd`には女性を表す`female`変数と、内閣に対する指示を表す`support`変数がある。これらの変数では、数字自体には特に意味がない。このような変数は、質的変数（qualitative variables）と呼ばれる。また、`female`のようにある特性を備えているかどうかを0と1で表現する変数を**ダミー変数**（dummy variable）と呼ぶ。
+
+```{r}
+table(myd$female)
+```
+
+0と1だと何を表しているかわかりにくい。質的変数を**factor**型にする。
+
+```{r}
+myd <- myd |>
+  mutate(female = factor(female,
+                         levels = c(0, 1),
+                         labels = c('male', 'female')))
+table(myd$female)
+```
+
+内閣への指示も変換する。
+
+```{r}
+myd <- myd |>
+  mutate(support = factor(support,
+                          levels = c(0, 1),
+                          labels = c('dis', 'sup')))
+table(myd$support)
+```
+
+### クロス表
+
+上で見た2つの質的変数同士には、なにか関係があるのだろうか。これを確かめるために、2つの質的変数の関係を表にしてみよう。複数の変数を使った表を**クロス表（cross table, contingency table）**という。
+
+```{r}
+table(myd$female, myd$support)
+# with(myd, table(female, support))
+```
+
+この表に名前をつけて保存し、後で使えるようにする。
+
+```{r}
+tbl_fem_sup <- with(myd, table(female, support))
+```
+
+男性で内閣不支持が200人、男性で指示するのが300人、女性では不支持も支持も250人ずついることがわかる。
+
+合計値も追加する。合計値は、データにとっては周辺的な情報であるし、物理的に見ても表の周辺に記載されるので、**周辺度数（margins）**と呼ばれる。
+
+```{r}
+addmargins(tbl_fem_sup) # margin引数で行列を指定
+```
+
+割合（proportion）そのものを表示したいときは、作ったテーブルに対して`prop.table()`を使う。`prop.table()`を使うときに注意すべき点が2つある。まず、何を100%にするかを決める必要がある。私たちのデータの場合、(1)男性は男性だけで、女性は女性だけで100%にする、(2)内閣不支持者と内閣支持者をそれぞれ100%にする、(3)全体（1,000人）を100%にするという3通りが考えられる。私たちの表では、(1)の場合を**行パーセント**、(2)を**列パーセント**、(3)を**全体パーセント**という。
+
+ここでは、「性別によって内閣支持に違いがあるか」を調べたいとする。行にある変数である性別ごとの違いを知りたいので、行パーセントを指定する（`margin = 1`）。
+
+第2に、周辺度数を加える場合、行と列のうち、原因として注目していない方の周辺度数は、`prop.table()`を使う前に、注目している方の周辺度数は`prop.table()`よりあとに加えたほうがいい。私たちは性別（行変数）による違いに注目しているので、
+
+1. 列（内閣支持）の周辺度数を加える
+1. 割合を計算する
+1. 行（性別）の周辺度数を加える
+
+という順番で表を作る。
+
+```{r}
+(tbl_fem_sup_1 <- addmargins(tbl_fem_sup, margin = 1))
+(tbl_fem_sup_p <- prop.table(tbl_fem_sup_1, margin = 1))
+(tbl_fem_sup_2 <- addmargins(tbl_fem_sup_p, margin = 2))
+(tbl_fem_sup_3 <- tbl_fem_sup_2 * 100)
+```
+
+男性の内閣支持率は60%、女性の内閣支持率は50%であることがわかる。
+
+### 独立性の検定
+
+私たちのデータでは、女性の内閣支持率より、男性の内閣支持率の方が高い。これはたまたま得られた結果だろうか。それとも、母集団でも男性の内閣支持率の方が高いと考えられるだろうか。
+
+これを確かめるために、統計的検定を行う。ここで検証する仮説は以下である。
+
+- 帰無仮説：性別と内閣支持率は独立である（つまり、男性の内閣支持率と女性の内閣支持率に差はない）
+- 対立仮説：性別と内閣支持率には関連がある（つまり、男性の内閣支持率$\ne$女性の内閣支持率）
+
+この検定は、2つの変数が独立である（帰無仮説）か、独立ではない（対立仮説）かを確かめるので、**独立性の検定**と呼ばれる。また、検定に$\chi ^ 2$（カイ二乗）分布を使うので、**$\chi ^ 2$検定**と呼ばれることもある。
+
+検定で使うカイ二乗分布の自由度は、分析する表の$( \text{行数} - 1 )( \text{列数} - 1 )$である。周辺度数を除くと、私たちの表は2行$\times$2列なので、自由度$(2 - 1)(2 - 1) = 1$のカイ二乗分布を利用する。
+
+有意水準を7%に設定すると、検定に使う臨界値は`qchisq()`を使って、
+
+```{r}
+qchisq(p = 0.07, df = 1, lower.tail = FALSE)
+```
+
+ということがわかる。検定統計量がこの臨界値より大きいとき、私たちは帰無仮説を棄却する。反対に、検定統計量がこの臨界値以下のとき、私たちは帰無仮説を棄却しない。
+
+検定統計量は、`chisq.test()`で計算できる（イェーツの連続性補正は使わないので`correct = FALSE`とする）。
+
+```{r}
+chisq.test(myd$female, myd$support, correct = FALSE)
+```
+
+X-squaredが検定統計量である。ここでは、`r chisq.test(myd$female, myd$support, correct = FALSE)$statistic |> round(2)`という値が得られた。この値は、有意水準7%での臨界値より大きいので、帰無仮説は棄却される。
+
+したがって、内閣支持率は性別によって異なり、男性の方が女性よりも内閣を支持するという判断を下す。
+
+### カイ二乗分布を理解する
+
+カイ二乗（$\chi ^ 2$）分布は、自由度$df \ge 1$によってその形を変える。
+
+```{r}
+x <- seq(0, 20, length = 1000)
+chi1 <- dchisq(x, df = 1)
+chi3 <- dchisq(x, df = 3)
+chi5 <- dchisq(x, df = 5)
+chi10 <- dchisq(x, df = 10)
+df_chisq <- tibble(
+  x = rep(x, 4),
+  chisq = c(chi1, chi3, chi5, chi10),
+  group = rep(c('df = 1', 'df = 3', 'df = 5', 'df = 10'),
+              rep(1000, 4))
+)
+dens_chisq <- ggplot(df_chisq,
+                     aes(x = x, y = chisq,
+                         color    = group,
+                         linetype = group)) +
+  geom_line() +
+  xlim(0, 15) + ylim(0, .5) +
+  scale_color_discrete(name = '自由度（df）') +
+  scale_linetype_discrete(name = '自由度（df）')
+plot(dens_chisq)
+```
+
+## 量的変数同士の関係を調べる
+
+### 量的変数
+
+量的変数とは、簡単に言うと、数値自体に意味がある変数。量的変数を調べるときは、まず、基本的な統計量とヒストグラムを確認する。
+
+```{r}
+mean(myd$height)
+median(myd$height)
+var(myd$height)
+sd(myd$height)
+h_height <- ggplot(myd, aes(x = height)) +
+  geom_histogram(color = 'black', fill = 'dodgerblue') +
+  labs(x = '身長（cm）', y = '度数')
+plot(h_height)
+```
+
+このデータが身長のデータであり、男女ともにデータに含まれていることを考えると、性別によって分布の山が変わりそうである。男女別にしてみる。
+
+```{r}
+h_height_gender <- h_height +
+  facet_grid(row = vars(female))
+plot(h_height_gender)
+```
+
+同様に、`faheight`の統計量を確認する。
+
+```{r}
+mean(myd$faheight)
+median(myd$faheight)
+var(myd$faheight)
+sd(myd$faheight)
+h_father <- ggplot(myd, aes(x = faheight)) +
+  geom_histogram(color = 'black', fill = 'tomato') +
+  labs(x = '身長（cm）', y = '度数')
+plot(h_father)
+```
+
+### 質的変数と量的変数の関係
+
+身長のヒストグラムから明らかになったように、性別（質的変数）と身長（量的変数）の間に関係がありそうである。質的変数と量的変数の関係は、図示すると理解しやすい。箱ひげ図（box-and-whisker plot, box plot）とバイオリン図（violin plot）と呼ばれる図を作って確認する。
+
+```{r}
+vb1 <- ggplot(myd, aes(x = female, y = height)) +
+  geom_violin() +
+  geom_boxplot(fill = 'gray', width = 0.5) +
+  labs(x = '性別', y = '身長（cm）')
+plot(vb1)
+```
+
+この図を見ると、男性の身長の分布と女性の身長の分布は異なる分布であり、男性の身長のほうが高いようである。
+
+しかし、これはあくまで標本の分布であり、母集団でも同じことが言えるかどうかは検定で確かめる必要がある。これを確かめるには、平均値の差の検定（この場合はウェルチ（Welch）の$t$検定）を行う必要がある。
+
+### 量的変数同士の関係
+
+次に量的変数同士（`height`と`faheight`）の関係を確かめてみる。
+
+まず散布図を描く。
+
+```{r}
+scat1 <- ggplot(myd, aes(x = faheight, y = height)) +
+  geom_point() +
+  labs(x = '父親の身長（cm）', y = '本人の身長（cm）')
+plot(scat1)
+```
+
+この図を見ると、父親の身長が高いほど、子の身長が高いという関係がありそうだ。
+
+次に、2変数の**直線的な**関係の強さを図るために、相関係数（orrelation coefficient）を計算する。
+
+```{r}
+with(myd, cor(height, faheight))
+```
+
+弱い正の相関があるようだ。
+
+図から得られた情報は整合的だろうか。相関係数だけ見ると、父親の身長と子の身長にはあまり強い関係は無さそうだという結論に成る。しかし、散布図を見ると、2変数の間には非常に強い関係がありそうである。
+
+男女を色と形で区別して散布図を作り直してみる。
+
+```{r}
+scat2 <- ggplot(myd, aes(x = faheight, y = height,
+                         color = female,
+                         shape = female)) +
+  geom_point() +
+  labs(x = '父親の身長（cm）', y = '本人の身長（cm）') +
+  scale_color_brewer(palette = 'Set1',
+                     name   = '性別',
+                     labels = c('男性', '女性')) +
+  scale_shape_discrete(name   = '性別',
+                       labels = c('男性', '女性'))
+plot(scat2)
+```
+
+性別ごとにグループができている。
+
+男女別にして相関係数を求め直そう。
+
+```{r}
+myd |>
+  filter(female == 'female') |>
+  with(cor(height, faheight)) |>
+  round(digits = 2)
+myd |> 
+  filter(female == 'male') |>
+  with(cor(height, faheight)) |>
+  round(2)
+```
+
+この例から分かる通り、単に相関係数だけを求めると、2変数の関係を見誤る可能性がある。反対に、散布図だけに頼ると、ありもしないパタンを「見つけて」しまうことがある。
