@@ -8,4 +8,16 @@ dependencies = [
     "notion-client>=3.0.0",
     "python-dotenv>=1.2.1",
 ]
+
+[project.scripts]
 journal = "journal.main:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
