@@ -1,5 +1,3 @@
-import subprocess
-
 from journal.questions import QUESTIONS
 from journal.notion_client import save_to_notion
 
@@ -38,8 +36,6 @@ def main():
         save_to_notion(answers)
 
         print("\n✅ Notionに保存しました")
-
-        subprocess.run(["gm"])
 
     else:
         print("\n保存をキャンセルしました")
