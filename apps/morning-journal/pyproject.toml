@@ -1,0 +1,11 @@
+[project]
+name = "morning-journal"
+version = "0.1.0"
+description = "Identity & Vision Driver CLI"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "notion-client>=3.0.0",
+    "python-dotenv>=1.2.1",
+]
+journal = "journal.main:main"
