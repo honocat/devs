@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import chalk from 'chalk';
 
 import { runMemo } from "./commands/memo.js";
 import { runDiary } from "./commands/diary.js";
@@ -20,4 +21,19 @@ program
   .description("add balance")
   .action(runBalance);
 
-program.parse();
+program.parseAsync().catch((error: unknown) => {
+  const isPromptCancel =
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name: string }).name === "ExitPromptError";
+
+  if (isPromptCancel) {
+    console.log();
+    console.log(chalk.yellow("⚠ 入力をキャンセルしました"));
+    console.log(chalk.gray("────────────────"));
+    process.exit(0);
+  }
+
+  throw error;
+})
