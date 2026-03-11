@@ -1,5 +1,4 @@
 import chalk from "chalk";
-import { fetchBusinessNewsTitles } from "../services/newsRSS.js";
 import {
   generateGeminiText,
   parseJsonFromGeminiText,
@@ -9,6 +8,8 @@ import {
   fetchPastMonthNews,
   saveAnalyzedNewsItems,
 } from "../services/notionNews.js";
+import { fetchBusinessNewsTitles } from "../services/newsRSS.js";
+import { runFramedCommand } from '../utils/commandFrame.js';
 
 type SelectedNews = {
   title: string;
@@ -115,30 +116,30 @@ function buildAnalyzePrompt(
 }
 
 export async function runNews() {
-  console.log(chalk.gray("────────────────"));
-  console.log(chalk.blue("おはようございます。本日の情報を収集しています..."));
+  await runFramedCommand(async () => {
+    console.log(chalk.white("おはようございます。本日の情報を収集しています..."));
 
-  const newsTitles = await fetchBusinessNewsTitles();
-  console.log(chalk.green(`✔ ニュース見出しを取得: ${newsTitles.length}件`));
+    const newsTitles = await fetchBusinessNewsTitles();
+    console.log(chalk.green(`✔ ニュース見出しを取得: ${newsTitles.length}件`));
 
-  const selectedText = await generateGeminiText(buildSelectPrompt(newsTitles));
-  const selected = parseJsonFromGeminiText<SelectedNews[]>(selectedText);
-  console.log(chalk.green(`✔ Geminiでニュースを厳選: ${selected.length}件`));
+    const selectedText = await generateGeminiText(buildSelectPrompt(newsTitles));
+    const selected = parseJsonFromGeminiText<SelectedNews[]>(selectedText);
+    console.log(chalk.green(`✔ Geminiでニュースを厳選: ${selected.length}件`));
 
-  const pastNews = await fetchPastMonthNews();
-  console.log(chalk.green(`✔ 過去1ヶ月のニュース参照: ${pastNews.length}件`));
+    const pastNews = await fetchPastMonthNews();
+    console.log(chalk.green(`✔ 過去1ヶ月のニュース参照: ${pastNews.length}件`));
 
-  const analyzedText = await generateGeminiText(
-    buildAnalyzePrompt(pastNews, selected),
-  );
-  const analyzed = parseJsonFromGeminiText<AnalyzedNews[]>(analyzedText);
+    const analyzedText = await generateGeminiText(
+      buildAnalyzePrompt(pastNews, selected),
+    );
+    const analyzed = parseJsonFromGeminiText<AnalyzedNews[]>(analyzedText);
 
-  await saveAnalyzedNewsItems(analyzed);
+    await saveAnalyzedNewsItems(analyzed);
 
-  for (const item of analyzed) {
-    console.log(chalk.white(`登録: ${item.title}`));
-  }
+    for (const item of analyzed) {
+      console.log(chalk.white(`登録: ${item.title}`));
+    }
 
-  console.log(chalk.green("要約が完了しました。"));
-  console.log(chalk.gray("────────────────"));
+    console.log(chalk.green("✔ 要約が完了しました。"));
+  });
 }

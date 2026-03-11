@@ -1,13 +1,12 @@
+import chalk from "chalk";
 import { balancePrompt } from "../prompts/balancePrompt.js";
 import { addBalance } from "../services/notionBalance.js";
-import chalk from "chalk";
+import { runFramedCommand } from '../utils/commandFrame.js';
 
 export async function runBalance() {
-  console.log(chalk.gray("────────────────"));
-  const { item, amount } = await balancePrompt();
-
-  await addBalance(item, amount);
-
-  console.log(chalk.green("✔ balance added"));
-  console.log(chalk.gray("────────────────"));
+  await runFramedCommand(async () => {
+    const { item, amount } = await balancePrompt();
+    await addBalance(item, amount);
+    console.log(chalk.green("✔ balance added"))
+  })
 }
