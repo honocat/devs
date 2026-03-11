@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import chalk from 'chalk';
+import chalk from "chalk";
 
 import { runMemo } from "./commands/memo.js";
 import { runDiary } from "./commands/diary.js";
 import { runBalance } from "./commands/balance.js";
+import { runJournal } from "./commands/journal.js";
 
 const program = new Command();
 
@@ -21,11 +22,17 @@ program
   .description("add balance")
   .action(runBalance);
 
+program
+  .command("journal")
+  .alias("j")
+  .description("write morning journal")
+  .action(runJournal);
+
 program.parseAsync().catch((error: unknown) => {
   const isPromptCancel =
-    typeof error === 'object' &&
+    typeof error === "object" &&
     error !== null &&
-    'name' in error &&
+    "name" in error &&
     (error as { name: string }).name === "ExitPromptError";
 
   if (isPromptCancel) {
@@ -36,4 +43,4 @@ program.parseAsync().catch((error: unknown) => {
   }
 
   throw error;
-})
+});
