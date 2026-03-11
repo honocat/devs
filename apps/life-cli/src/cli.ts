@@ -7,6 +7,7 @@ import { runMemo } from "./commands/memo.js";
 import { runDiary } from "./commands/diary.js";
 import { runBalance } from "./commands/balance.js";
 import { runJournal } from "./commands/journal.js";
+import { runNews } from "./commands/news.js";
 
 const program = new Command();
 
@@ -27,6 +28,12 @@ program
   .alias("j")
   .description("write morning journal")
   .action(runJournal);
+
+program
+  .command("news")
+  .alias("n")
+  .description("collect and analyze daily news")
+  .action(runNews);
 
 program.parseAsync().catch((error: unknown) => {
   const isPromptCancel =
