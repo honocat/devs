@@ -138,10 +138,10 @@ export async function addNightJournal(payload: NightJournalPayload) {
       heading_2: {
         rich_text: [{ type: "text", text: { content: "ナイト・ジャーナル" } }],
       },
-      ...buildSection("今日感謝したこと", payload.gratitude),
-      ...buildSection("今日の気付き・成長", payload.insight),
-      ...buildSection("明日やること", payload.tomorrowTask),
     },
+    ...buildSection("今日感謝したこと", payload.gratitude),
+    ...buildSection("今日の気付き・成長", payload.insight),
+    ...buildSection("明日やること", payload.tomorrowTask),
   ];
 
   if (payload.note && payload.note.trim().length > 0) {

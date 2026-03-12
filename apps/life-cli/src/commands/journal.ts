@@ -22,7 +22,7 @@ export async function runMorningJournal() {
 
     const lastTask = await loadLastTask();
     if (lastTask) {
-      console.log(chalk.magenta("\n🌙 昨夜の予定"));
+      console.log(chalk.cyan("\n🌙 昨夜の予定"));
       console.log(chalk.white(`- ${lastTask.tomorrowTask}`));
       console.log();
     }
@@ -44,7 +44,7 @@ export async function runMorningJournal() {
   });
 
   console.log(
-    chalk.blue(
+    chalk.cyan(
       "\n✔ モーニングジャーナル完了。続けてニュース分析を開始します...",
     ),
   );
