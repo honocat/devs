@@ -1,8 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
 
-const GOAL_DIR = path.join(process.env.HOME ?? process.cwd(), ".life-cli");
-const GOAL_FILE_PATH = path.join(GOAL_DIR, "goal.json");
+const LIFE_DIR = path.join(process.env.HOME ?? process.cwd(), ".life-cli");
+const GOAL_FILE_PATH = path.join(LIFE_DIR, "goal.json");
 
 const DEFAULT_GOAL = "まだ生涯目標は設定されていません。";
 
@@ -29,7 +29,7 @@ export async function loadLifeGoal() {
 }
 
 export async function saveLifeGoal(lifeGoal: string) {
-  await fs.mkdir(GOAL_DIR, { recursive: true });
+  await fs.mkdir(LIFE_DIR, { recursive: true });
   await fs.writeFile(
     GOAL_FILE_PATH,
     JSON.stringify({ lifeGoal }, null, 2),

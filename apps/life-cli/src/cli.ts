@@ -6,7 +6,8 @@ import chalk from "chalk";
 import { runMemo } from "./commands/memo.js";
 import { runDiary } from "./commands/diary.js";
 import { runBalance } from "./commands/balance.js";
-import { runJournal } from "./commands/journal.js";
+import { runJournal, runMorningJournal } from "./commands/journal.js";
+import { runNightJournal } from "./commands/nightJournal.js";
 import { runNews } from "./commands/news.js";
 
 const program = new Command();
@@ -25,9 +26,20 @@ program
 
 program
   .command("journal")
-  .alias("j")
-  .description("write morning journal")
+  .description("write morning journal (legacy command)")
   .action(runJournal);
+
+program
+  .command("morning-journal")
+  .alias("mj")
+  .description("write morning journal")
+  .action(runMorningJournal);
+
+program
+  .command("night-journal")
+  .alias("nj")
+  .description("write night journal")
+  .action(runNightJournal);
 
 program
   .command("news")

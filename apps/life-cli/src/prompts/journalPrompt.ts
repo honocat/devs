@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
 
-export type JournalAnswers = {
+export type MorningJournalAnswers = {
   targetY: string;
   target3M: string;
   smallWin: string;
@@ -9,7 +9,7 @@ export type JournalAnswers = {
   idea: string;
 };
 
-export async function journalPrompt(): Promise<JournalAnswers> {
+export async function morningJournalPrompt(): Promise<MorningJournalAnswers> {
   const answers = await inquirer.prompt([
     {
       type: "input",
@@ -33,7 +33,6 @@ export async function journalPrompt(): Promise<JournalAnswers> {
       name: "task",
       message: chalk.cyan("Q3. 今日やり遂げたいタスクを1つ書いてください。"),
     },
-
     {
       type: "input",
       name: "idea",
