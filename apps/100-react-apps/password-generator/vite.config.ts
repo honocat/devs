@@ -15,5 +15,5 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     }
   },
-  base: "/100-react-apps/password-generator",
+  base: "/works/100-react-apps/password-generator",
 })

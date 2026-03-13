@@ -1,15 +1,53 @@
-# [100 Raect Apps](https://honocat.github.io/works)
+# 100 React Apps on GitHub Pages
 
-## memo
+`devs/apps/100-react-apps/`配下のVite + ReactアプリをGitHub Pagesに公開する手順。
 
-1. `vite.config.ts`に`base`を追加
+## 公開先 URL
 
-```
+`https://honocat/github.io/works/100-react-apps/<app-name>/`
+
+## 1) Viteの`base`を設定する
+
+公開したいアプリの`vite.config.ts`に`base`を設定します。
+
+```ts
 export default defineConfig({
-    base: "/100-react-apps/<appname>",
-})
+  // ...
+  base: "/works/100-react-apps/<app-name>/",
+});
 ```
 
-2. `npm run build`を実行
+## 2) ビルドする
 
-生成された`./<app>/dist`を`./docs`に移動。
+```bash
+cd 100-react-apps/<app-name>/
+npm ci
+npm run build
+```
+
+## 3) `docs`配下に配置する
+
+`dist`の中身を、リポジトリのPages公開ディレクトリに配置します。
+
+```bash
+mkdir -p ../docs/<app-name>
+cp -r ./dist/* ../docs/<app-name>/
+```
+
+## 4) GitHub Pagesの設定
+
+リポジトリのSettings > Pagesで次を確認します。
+
+- Source: `Deploy from a branch`
+- Branch: `main`
+- Folder: `/apps/100-react-apps/docs`
+
+## 5) 反映
+
+`main`にpushすると数分で反映される。
+
+```bash
+git add apps/100-react-apps/docs/<app-name> apps/100-react-apps/<app-name>/vite.config.ts
+git commit -m 'Deploy <app-name> to GitHub Pages under /works/100-react-apps/<app-name>'
+git push origin main
+```
