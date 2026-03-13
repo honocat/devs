@@ -4,7 +4,7 @@
 
 ## 公開先 URL
 
-`https://honocat.github.io/works/100-react-apps/<app-name>/`
+`https://honocat.github.io/devs/100-react-apps/<app-name>/`
 
 ## 1) Viteの`base`を設定する
 
@@ -13,7 +13,7 @@
 ```ts
 export default defineConfig({
   // ...
-  base: "/works/100-react-apps/<app-name>/",
+  base: "/devs/100-react-apps/<app-name>/",
 });
 ```
 
@@ -30,8 +30,9 @@ npm run build
 `dist`の中身を、GitHub Pagesで公開しているディレクトリに配置します。
 
 ```bash
-mkdir -p ../docs/<app-name>
-cp -r ./dist/* ../docs/<app-name>/
+cd apps/100-react-apps/<app-name>/
+mkdir -p ../../../docs/<app-name>
+cp -r ./dist/* ../../../docs/<app-name>/
 ```
 
 ## 4) GitHub Pagesの設定
@@ -40,14 +41,15 @@ cp -r ./dist/* ../docs/<app-name>/
 
 - Source: `Deploy from a branch`
 - Branch: `main`
-- Folder: `/apps/100-react-apps/docs`
+- Folder: `/docs`
 
 ## 5) 反映
 
 `main`にpushすると数分で反映される。
 
 ```bash
-git add apps/100-react-apps/docs/<app-name> apps/100-react-apps/<app-name>/vite.config.ts
+cd devs
+git add docs/<app-name> apps/100-react-apps/<app-name>/vite.config.ts
 git commit -m 'Deploy <app-name> to GitHub Pages under /works/100-react-apps/<app-name>'
 git push origin main
 ```
