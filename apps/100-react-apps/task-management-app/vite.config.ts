@@ -11,5 +11,5 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src")
     }
   },
-  "base": "/100-react-apps/task-management-app"
+  base: '/works/100-react-apps/task-management-app',
 });

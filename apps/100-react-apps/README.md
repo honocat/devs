@@ -4,7 +4,7 @@
 
 ## 公開先 URL
 
-`https://honocat/github.io/works/100-react-apps/<app-name>/`
+`https://honocat.github.io/works/100-react-apps/<app-name>/`
 
 ## 1) Viteの`base`を設定する
 
@@ -20,14 +20,14 @@ export default defineConfig({
 ## 2) ビルドする
 
 ```bash
-cd 100-react-apps/<app-name>/
+cd apps/100-react-apps/<app-name>/
 npm ci
 npm run build
 ```
 
 ## 3) `docs`配下に配置する
 
-`dist`の中身を、リポジトリのPages公開ディレクトリに配置します。
+`dist`の中身を、GitHub Pagesで公開しているディレクトリに配置します。
 
 ```bash
 mkdir -p ../docs/<app-name>
@@ -36,7 +36,7 @@ cp -r ./dist/* ../docs/<app-name>/
 
 ## 4) GitHub Pagesの設定
 
-リポジトリのSettings > Pagesで次を確認します。
+このリポジトリをPages公開元にしている場合、Settings > Pagesで次を確認します。
 
 - Source: `Deploy from a branch`
 - Branch: `main`
