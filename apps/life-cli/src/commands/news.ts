@@ -20,6 +20,67 @@ type NewsForAnalysis = SelectedNews & {
   body: string;
 };
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/["'”“’]/g, "")
+    .replace(/[｜|].*$/g, "")
+    .replace(/[-–—ー]\s*[^-–—ー]+$/g, "")
+    .trim();
+}
+
+function pickSelectedNewsItems(
+  newsItems: { title: string; source: string; snippet: string; link: string }[],
+  selected: SelectedNews[],
+) {
+  const usedLinks = new Set<string>();
+  const picked: (typeof newsItems)[number][] = [];
+
+  for (const candidate of selected) {
+    const normalizedTitle = normalizeText(candidate.title);
+    const normalizedSource = normalizeText(candidate.source);
+
+    const exact = newsItems.find((item) => {
+      if (usedLinks.has(item.link)) {
+        return false;
+      }
+
+      return (
+        normalizeText(item.title) === normalizedTitle &&
+        normalizeText(item.source) === normalizedSource
+      );
+    });
+
+    if (exact) {
+      usedLinks.add(exact.link);
+      picked.push(exact);
+      continue;
+    }
+
+    const titleOnly = newsItems.find((item) => {
+      if (usedLinks.has(item.link)) {
+        return false;
+      }
+
+      const itemTitle = normalizeText(item.title);
+      return (
+        itemTitle === normalizedTitle ||
+        itemTitle.includes(normalizedTitle) ||
+        normalizedTitle.includes(itemTitle)
+      );
+    });
+
+    if (titleOnly) {
+      usedLinks.add(titleOnly.link);
+      picked.push(titleOnly);
+    }
+  }
+
+  return picked;
+}
+
 function buildSelectPrompt(
   newsItems: { title: string; source: string; snippet: string }[],
 ) {
@@ -141,14 +202,16 @@ export async function runNews() {
     const selected = parseJsonFromGeminiText<SelectedNews[]>(selectedText);
     console.log(chalk.green(`✔ Geminiでニュースを厳選: ${selected.length}件`));
 
-    const selectedItems = selected
-      .map((picked) =>
-        newsItems.find(
-          (item) =>
-            item.title === picked.title && item.source === picked.source,
+    const selectedItems = pickSelectedNewsItems(newsItems, selected);
+
+    if (selectedItems.length === 0 && newsItems.length > 0) {
+      selectedItems.push(...newsItems.slice(0, 5));
+      console.log(
+        chalk.yellow(
+          "⚠ Geminiの選定結果をニュース一覧に突合できなかったため、取得順の先頭5件で処理を継続します。",
         ),
-      )
-      .filter((item): item is (typeof newsItems)[number] => Boolean(item));
+      );
+    }
 
     const enrichedSelected = await enrichNewsWithBody(selectedItems);
     console.log(
