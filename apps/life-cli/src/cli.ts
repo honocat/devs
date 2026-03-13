@@ -1,51 +1,71 @@
 #!/usr/bin/env node
 
-import { Command } from "commander";
 import chalk from "chalk";
-
-import { runMemo } from "./commands/memo.js";
-import { runDiary } from "./commands/diary.js";
+import { Command } from "commander";
 import { runBalance } from "./commands/balance.js";
+import { runDiary } from "./commands/diary.js";
 import { runJournal, runMorningJournal } from "./commands/journal.js";
-import { runNightJournal } from "./commands/nightJournal.js";
+import { runMemo } from "./commands/memo.js";
 import { runNews } from "./commands/news.js";
+import { runNightJournal } from "./commands/nightJournal.js";
+
+type CommandAction = () => Promise<void>;
+
+type CommandDefinition = {
+  name: string;
+  description: string;
+  action: CommandAction;
+  alias?: string;
+};
+
+const commandDefinitions: CommandDefinition[] = [
+  { name: "memo", alias: "m", description: "add memo", action: runMemo },
+  { name: "diary", alias: "d", description: "write diary", action: runDiary },
+  {
+    name: "balance",
+    alias: "b",
+    description: "add balance",
+    action: runBalance,
+  },
+  {
+    name: "journal",
+    description: "write morning journal (legacy command)",
+    action: runJournal,
+  },
+  {
+    name: "morning-journal",
+    alias: "mj",
+    description: "write morning journal",
+    action: runMorningJournal,
+  },
+  {
+    name: "night-journal",
+    alias: "nj",
+    description: "write night journal",
+    action: runNightJournal,
+  },
+  {
+    name: "news",
+    alias: "n",
+    description: "collect and analyze daily news",
+    action: runNews,
+  },
+];
 
 const program = new Command();
 
 program.name("life").description("life logging cli");
 
-program.command("memo").alias("m").description("add memo").action(runMemo);
+for (const commandDefinition of commandDefinitions) {
+  const command = program
+    .command(commandDefinition.name)
+    .description(commandDefinition.description)
+    .action(commandDefinition.action);
 
-program.command("diary").alias("d").description("write diary").action(runDiary);
-
-program
-  .command("balance")
-  .alias("b")
-  .description("add balance")
-  .action(runBalance);
-
-program
-  .command("journal")
-  .description("write morning journal (legacy command)")
-  .action(runJournal);
-
-program
-  .command("morning-journal")
-  .alias("mj")
-  .description("write morning journal")
-  .action(runMorningJournal);
-
-program
-  .command("night-journal")
-  .alias("nj")
-  .description("write night journal")
-  .action(runNightJournal);
-
-program
-  .command("news")
-  .alias("n")
-  .description("collect and analyze daily news")
-  .action(runNews);
+  if (commandDefinition.alias) {
+    command.alias(commandDefinition.alias);
+  }
+}
 
 program.parseAsync().catch((error: unknown) => {
   const isPromptCancel =
