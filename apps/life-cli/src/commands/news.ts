@@ -8,19 +8,32 @@ import {
   fetchPastMonthNews,
   saveAnalyzedNewsItems,
 } from "../services/notionNews.js";
-import { fetchBusinessNewsTitles } from "../services/newsRSS.js";
-import { runFramedCommand } from '../utils/commandFrame.js';
+import { enrichNewsWithBody, fetchBusinessNews } from "../services/newsRSS.js";
+import { runFramedCommand } from "../utils/commandFrame.js";
 
 type SelectedNews = {
   title: string;
   source: string;
 };
 
-function buildSelectPrompt(newsTitles: string[]) {
+type NewsForAnalysis = SelectedNews & {
+  body: string;
+};
+
+function buildSelectPrompt(
+  newsItems: { title: string; source: string; snippet: string }[],
+) {
+  const newsList = newsItems
+    .map(
+      (item, index) =>
+        `${index + 1}. ${item.title} (${item.source}) \n概要：${item.snippet}`,
+    )
+    .join("\n\n");
+
   return `
         【指示】
         あなたは優秀なテック業界アナリストです。
-        以下のニュースの見出し（【ニュース一覧】）から
+        以下のニュース（【ニュース一覧】）から
         ユーザ（【ユーザプロファイル】）にとって重要なニュースを、
         多様性を考慮して5件選んでください。
         ただし、各ニュースは下記カテゴリ（【カテゴリ】）のどれかに分類し、
@@ -55,13 +68,13 @@ function buildSelectPrompt(newsTitles: string[]) {
         ]
 
         【ニュース一覧】
-        ${newsTitles.join("\n")}
+        ${newsList}
     `;
 }
 
 function buildAnalyzePrompt(
   pastNews: { title: string; summary: string }[],
-  selected: SelectedNews[],
+  selected: NewsForAnalysis[],
 ) {
   const pastContext = pastNews.length
     ? pastNews.map((item) => `- ${item.title} : ${item.summary}`).join("\n")
@@ -110,27 +123,50 @@ function buildAnalyzePrompt(
         【過去1ヶ月のニュース】
         ${pastContext}
 
-        【本日のニュース】
+        【本日のニュース（本文付き）】
         ${JSON.stringify(selected, null, 2)}
     `;
 }
 
 export async function runNews() {
   await runFramedCommand(async () => {
-    console.log(chalk.white("おはようございます。本日の情報を収集しています..."));
+    console.log(
+      chalk.white("おはようございます。本日の情報を収集しています..."),
+    );
 
-    const newsTitles = await fetchBusinessNewsTitles();
-    console.log(chalk.green(`✔ ニュース見出しを取得: ${newsTitles.length}件`));
+    const newsItems = await fetchBusinessNews();
+    console.log(chalk.green(`✔ ニュース一覧を取得: ${newsItems.length}件`));
 
-    const selectedText = await generateGeminiText(buildSelectPrompt(newsTitles));
+    const selectedText = await generateGeminiText(buildSelectPrompt(newsItems));
     const selected = parseJsonFromGeminiText<SelectedNews[]>(selectedText);
     console.log(chalk.green(`✔ Geminiでニュースを厳選: ${selected.length}件`));
+
+    const selectedItems = selected
+      .map((picked) =>
+        newsItems.find(
+          (item) =>
+            item.title === picked.title && item.source === picked.source,
+        ),
+      )
+      .filter((item): item is (typeof newsItems)[number] => Boolean(item));
+
+    const enrichedSelected = await enrichNewsWithBody(selectedItems);
+    console.log(
+      chalk.green(`✔ ニュース本文を取得: ${enrichedSelected.length}件`),
+    );
 
     const pastNews = await fetchPastMonthNews();
     console.log(chalk.green(`✔ 過去1ヶ月のニュース参照: ${pastNews.length}件`));
 
     const analyzedText = await generateGeminiText(
-      buildAnalyzePrompt(pastNews, selected),
+      buildAnalyzePrompt(
+        pastNews,
+        enrichedSelected.map(({ title, source, body }) => ({
+          title,
+          source,
+          body,
+        })),
+      ),
     );
     const analyzed = parseJsonFromGeminiText<AnalyzedNews[]>(analyzedText);
 

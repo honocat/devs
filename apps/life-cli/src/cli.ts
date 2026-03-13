@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { runBalance } from "./commands/balance.js";
 import { runDiary } from "./commands/diary.js";
-import { runJournal, runMorningJournal } from "./commands/journal.js";
+import { runMorningJournal } from "./commands/morningJournal.js";
 import { runMemo } from "./commands/memo.js";
 import { runNews } from "./commands/news.js";
 import { runNightJournal } from "./commands/nightJournal.js";
@@ -26,11 +26,6 @@ const commandDefinitions: CommandDefinition[] = [
     alias: "b",
     description: "add balance",
     action: runBalance,
-  },
-  {
-    name: "journal",
-    description: "write morning journal (legacy command)",
-    action: runJournal,
   },
   {
     name: "morning-journal",

@@ -50,5 +50,3 @@ export async function runMorningJournal() {
   );
   await runNews();
 }
-
-export const runJournal = runMorningJournal;

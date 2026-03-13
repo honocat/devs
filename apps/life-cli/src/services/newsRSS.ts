@@ -1,7 +1,55 @@
 const BUSINESS_RSS_URL =
   "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ja&gl=JP&ceid=JP:ja";
 
-export async function fetchBusinessNewsTitles(limit = 50) {
+export type BusinessNewsItem = {
+  title: string;
+  source: string;
+  snippet: string;
+  link: string;
+};
+
+function extractTagContent(itemXml: string, tagName: string) {
+  const cdataRegex = new RegExp(
+    `<${tagName}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tagName}>`,
+  );
+  const plainRegex = new RegExp(`<${tagName}>([\\s\\S]*?)<\\/${tagName}>`);
+  const cdataMatch = itemXml.match(cdataRegex);
+  if (cdataMatch?.[1]) {
+    return cdataMatch[1].trim();
+  }
+
+  const plainMatch = itemXml.match(plainRegex);
+  return plainMatch?.[1]?.trim() ?? "";
+}
+
+function stripHtml(value: string) {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractSource(itemXml: string) {
+  const source = extractTagContent(itemXml, "source");
+  if (source.length > 0) {
+    return stripHtml(source);
+  }
+
+  const description = extractTagContent(itemXml, "description");
+  const sourceInDescription = description.match(
+    /<font[^>]*>(.*?)<\/font>/i,
+  )?.[1];
+
+  return sourceInDescription ? stripHtml(sourceInDescription) : "不明";
+}
+
+export async function fetchBusinessNews(
+  limit = 50,
+): Promise<BusinessNewsItem[]> {
   const response = await fetch(BUSINESS_RSS_URL);
   if (!response.ok) {
     throw new Error(`RSS取得に失敗しました: ${response.status}`);
@@ -11,19 +59,89 @@ export async function fetchBusinessNewsTitles(limit = 50) {
   const itemMatches = [...xml.matchAll(/<item>[\s\S]*?<\/item>/g)].map(
     (match) => match[0],
   );
-  const titles = itemMatches
-    .map((item) => {
-      const titleMatch = item.match(
-        /<title><!\[CDATA\[(.*?)\]\]><\/title>|<title>(.*?)<\/title>/,
-      );
-      return (titleMatch?.[1] ?? titleMatch?.[2] ?? "").trim();
+
+  const newsItems = itemMatches
+    .map((itemXml) => {
+      const title = stripHtml(extractTagContent(itemXml, "title"));
+      const description = stripHtml(extractTagContent(itemXml, "description"));
+      const link = extractTagContent(itemXml, "link");
+      const source = extractSource(itemXml);
+
+      return {
+        title,
+        source,
+        snippet: description,
+        link,
+      };
     })
-    .filter((title) => title.length > 0 && !title.includes("Google ニュース"))
+    .filter(
+      (item) =>
+        item.title.length > 0 &&
+        !item.title.includes("Google ニュース") &&
+        item.link.length > 0,
+    )
     .slice(0, limit);
 
-  if (titles.length === 0) {
+  if (newsItems.length === 0) {
     throw new Error("ニュース抽出に失敗しました。");
   }
 
-  return titles;
+  return newsItems;
+}
+
+function toReadableText(html: string) {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchArticleBody(link: string, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(link, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      },
+    });
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const html = await response.text();
+    const readable = toReadableText(html);
+
+    return readable.slice(0, 2000);
+  } catch {
+    return "";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function enrichNewsWithBody(items: BusinessNewsItem[]) {
+  const enriched = await Promise.all(
+    items.map(async (item) => {
+      const body = await fetchArticleBody(item.link);
+      return {
+        ...item,
+        body: body.length > 0 ? body : item.snippet,
+      };
+    }),
+  );
+
+  return enriched;
 }
