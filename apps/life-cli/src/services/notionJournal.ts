@@ -39,7 +39,7 @@ export async function assertNotionConnection() {
   await notion.users.me({});
 }
 
-function getCommonProperties(title: string) {
+function getCommonProperties(title: string, tag: string) {
   return {
     名前: {
       title: [
@@ -49,7 +49,7 @@ function getCommonProperties(title: string) {
       ],
     },
     タグ: {
-      multi_select: [{ name: "ジャーナル" }],
+      multi_select: [{ name: tag }],
     },
     作成日時: {
       date: { start: new Date().toISOString() },
@@ -96,7 +96,10 @@ export async function addMorningJournal(payload: MorningJournalPayload) {
       type: "data_source_id",
       data_source_id: dataSourceId,
     },
-    properties: getCommonProperties(`${today} モーニングジャーナル`),
+    properties: getCommonProperties(
+      `${today} モーニングジャーナル`,
+      "モーニングジャーナル",
+    ),
     children: [
       {
         object: "block",
@@ -153,7 +156,10 @@ export async function addNightJournal(payload: NightJournalPayload) {
       type: "data_source_id",
       data_source_id: dataSourceId,
     },
-    properties: getCommonProperties(`${today} ナイトジャーナル`),
+    properties: getCommonProperties(
+      `${today} ナイトジャーナル`,
+      "ナイトジャーナル",
+    ),
     children,
   });
 }
