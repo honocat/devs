@@ -17,9 +17,6 @@ export async function loadLifeGoal() {
     const raw = await fs.readFile(LIFE_GOAL_FILE_PATH, "utf-8");
     const parsed = JSON.parse(raw) as GoalConfig;
 
-    console.log(parsed);
-    console.log(parsed.goal);
-
     if (typeof parsed.goal !== "string" || parsed.goal.trim().length === 0) {
       return DEFAULT_GOAL;
     }
