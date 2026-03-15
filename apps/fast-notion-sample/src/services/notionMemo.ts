@@ -15,7 +15,7 @@ export async function addMemo(title: string) {
         ],
       },
       タグ: {
-        multi_select: [{ name: "メモ" }],
+        multi_select: [{ name: "タグ" }],
       },
     },
   });

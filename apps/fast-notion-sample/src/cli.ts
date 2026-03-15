@@ -8,7 +8,11 @@ const program = new Command();
 
 program.name("sample-cli");
 
-program.command("memo").alias("m").description("add memo").action(runMemo);
+program
+  .command("memo")
+  .alias("m")
+  .description("add memo")
+  .action(runMemo);
 
 program.parseAsync().catch((error: unknown) => {
   const isPromptCancel =

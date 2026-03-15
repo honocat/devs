@@ -2,9 +2,9 @@
 
 ## 概要
 
-この記事では、Notion API（公式SDKの`@notionhq/client`）を使って、ターミナルからNotionのデータベース（データソース）へメモ（ページ）を追加する最小のCLIを作ります。iTerm2で`life memo`のようなコマンドを叩いて1行入力すると、Notion側にページが追加されるところまでをゴールにします（サンプル実装ではコマンド名を`sample-cli`にしています）。
+この記事では、Notion API（公式SDKの`@notionhq/client`）を使って、ターミナルからNotionのデータベース（データソース）へメモ（ページ）を追加する最小のCLIを作ります。iTerm2で`sample memo`コマンドを叩いて1行入力すると、Notion側にページが追加されるところまでをゴールにします。
 
-[画像の説明: iTerm2で`life memo`を実行し、Notionにメモが追加されるまでの流れが分かるスクリーンショット(ターミナルとNotion画面の2枚、または並べた1枚)]
+[gif: life-cli.gif]
 
 ### 想定読者
 
@@ -29,12 +29,12 @@ Node.js / iTerm2 / Notionアカウントは各自で用意してください。N
 
 まずは、メモを追加する「受け皿」のデータベースを作ります。今回は、新しく作ったページにインラインのデータベースを作成しました（フルページのデータベースでも構いません）。
 
-[fast-notion-01-db]
+[img: fast-notion-01-db]
 
 後ほどCLIから指定するので、Notionが表示するデータソースIDを控えておきます。
 
-[fast-notion-02-data-source-id]
-[fast-notion-03-copy]
+[img: fast-notion-02-data-source-id]
+[img: fast-notion-03-copy]
 
 データソースIDの形式は以下の通りです。
 
@@ -53,8 +53,8 @@ Node.js / iTerm2 / Notionアカウントは各自で用意してください。N
 
 この2つだけで「本文 + タグ」付きのメモを追加できます。`作成日時`や`ステータス`なども付けたい場合は、同じ要領でプロパティを追加して`properties`に渡します。
 
-[fast-notion-04-multi-select]
-[fast-notion-05-tag]
+[img: fast-notion-04-multi-select]
+[img: fast-notion-05-tag]
 
 これでデータベースの作成は完了です。
 
@@ -64,19 +64,19 @@ Node.js / iTerm2 / Notionアカウントは各自で用意してください。N
 
 まず、[Notion APIのページ](https://developers.notion.com/)にアクセスします。その後、`my integration`のページへ移動します。
 
-[fast-notion-06-view-my-integration]
+[img: fast-notion-06-view-my-integration]
 
 最下部にある「内部インテグレーション」から新しいインテグレーションを作成します。
 
-[fast-notion-07-internal-integration]
+[img: fast-notion-07-internal-integration]
 
 インテグレーション名は自由です（ただし`Notion`という文字列は使えません）。今回は`sample`としました。そして、このインテグレーションの接続先ワークスペースを選択し、作成します。
 
-[fast-notion-08-new-integration]
+[img: fast-notion-08-new-integration]
 
 その後、インテグレーション設定へ行き、「内部インテグレーションシークレット」を取得します。あとで`.env`に書くので、この時点で控えておきます。
 
-[fast-notion-09-secret]
+[img: fast-notion-09-secret]
 
 内部インテグレーションシークレットの形式は以下の通りです。
 
@@ -88,7 +88,7 @@ ntn_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 インテグレーションを作っただけでは、作成したデータベースにアクセスできません。対象データベースの「接続」からインテグレーションを追加して共有します。ここを忘れると、CLIを実行したときに「権限がない」系のエラーになって止まります。
 
-[fast-notion-10-connect]
+[img: fast-notion-10-connect]
 
 以上で、Notion側の設定は終了です。
 
@@ -162,7 +162,7 @@ $ npm install @notionhq/client commander inquirer dotenv chalk
 $ npm install --save-dev typescript @types/node
 ```
 
-さらに、`"type": "module"`への変更と、`"bin": {}`を追加します。ここで`"type": "module"`にしておくと、TypeScript→JavaScriptに変換したあともNode.jsのES Modulesとして実行しやすくなります。また`"bin"`は、`npm link`したときにどのコマンド名で実行できるかを決めます。最終的な`./package.json`は次の通りです。
+続いて、`"type": "module"`への変更、`"scripts": { "build": "tsc" }`,`"bin": {}`の追加を行います。ここで`"type": "module"`にしておくと、TypeScript→JavaScriptに変換したあともNode.jsのES Modulesとして実行しやすくなります。また`"bin"`は、`npm link`したときにどのコマンド名で実行できるかを決めます。最終的な`./package.json`は次の通りです。
 
 依存関係のバージョンは執筆時点の例です（手元の環境では異なる場合があります）。
 
@@ -386,6 +386,10 @@ export async function memoPrompt(): Promise<{ title: string }> {
 
 ### Notionにページを作成する（`notionMemo.ts`）
 
+```sh
+$ touch src/services/notionMemo.ts
+```
+
 Notion側で作ったプロパティ名と、APIに渡す`properties`のキーは一致している必要があります。例えばNotion側のプロパティ名が`タグ`なら、`properties`にも`タグ`というキーで値を渡します。
 
 ```ts
@@ -479,19 +483,17 @@ program.parseAsync().catch((error: unknown) => {
 ここまでできたら、TypeScriptをビルドしてCLIとして実行できる状態にします。`npm run build`は`tsconfig.json`の設定に従って`src/`配下のTypeScriptをコンパイルし、`dist/`にJavaScriptを出力します。
 
 ```sh
-npm run build
+$ npm run build
 ```
 
 次に、ローカル環境でコマンドとして実行できるようにします。開発中は`npm link`を使うと、`package.json`の`bin`設定（この例では`sample-cli`）を手元のNode.js環境にリンクできます。リンク後は、`sample-cli memo`で実行できます。
 
 ```sh
-npm link
-sample-cli memo
+$ npm link
+$ sample-cli memo
 ```
 
-[実行中のGif]
-
-### iTerm2運用(よく使う形に寄せる)
+[gif: sample-cli.gif]
 
 毎回`sample-cli memo`と打つのが面倒なら、シェルのエイリアスを用意して短いコマンドで起動できるようにします。例えば`m`という名前で呼び出したい場合は、`.zshrc`に次の1行を追加します。
 
