@@ -1,5 +1,7 @@
 import dayjs from "dayjs";
 import { notion } from "./notionClient.js";
+import { requireEnv } from "./env.js";
+import { buildTaskProperties } from "./notionProps.js";
 
 export type MorningJournalPayload = {
   targetY: string;
@@ -16,48 +18,10 @@ export type NightJournalPayload = {
   note?: string;
 };
 
-{
-  /*
-type LlmJournalFeeadbackInput = {
-  type: "morning" | "night";
-  date: string;
-  payload: MorningJournalPayload | NightJournalPayload;
-};
-
-export async function generateJournalFeedback(
-  _input: LlmJournalFeedbackInput,
-): Promise<string | null> {
-  // TODO: LLM連携時に実装する
-  return null;
-}
-*/
-}
-
-const getJournalDataSourceId = () => process.env.DATA_SOURCE_ID;
+// TODO: LLM連携時にフィードバック生成を実装する
 
 export async function assertNotionConnection() {
   await notion.users.me({});
-}
-
-function getCommonProperties(title: string, tag: string) {
-  return {
-    名前: {
-      title: [
-        {
-          text: { content: title },
-        },
-      ],
-    },
-    タグ: {
-      multi_select: [{ name: tag }],
-    },
-    作成日時: {
-      date: { start: new Date().toISOString() },
-    },
-    ステータス: {
-      status: { name: "未着手" },
-    },
-  };
 }
 
 function buildSection(question: string, answer: string): any[] {
@@ -80,23 +44,19 @@ function buildSection(question: string, answer: string): any[] {
 }
 
 export async function addMorningJournal(payload: MorningJournalPayload) {
-  const dataSourceId = getJournalDataSourceId();
-
-  if (!dataSourceId) {
-    throw new Error(
-      "NotionのデータソースIDが設定されていません（DATA_SOURCE_ID）。",
-    );
-  }
+  const dataSourceId = requireEnv(
+    "DATA_SOURCE_ID",
+    "NotionのデータソースIDが設定されていません（DATA_SOURCE_ID）。",
+  );
 
   const today = dayjs().format("YYYY-MM-DD");
-  // await generateJournalFeedback({ type: "morning", date: today, payload });
 
   await notion.pages.create({
     parent: {
       type: "data_source_id",
       data_source_id: dataSourceId,
     },
-    properties: getCommonProperties(
+    properties: buildTaskProperties(
       `${today} モーニングジャーナル`,
       "モーニングジャーナル",
     ),
@@ -123,16 +83,12 @@ export async function addMorningJournal(payload: MorningJournalPayload) {
 }
 
 export async function addNightJournal(payload: NightJournalPayload) {
-  const dataSourceId = getJournalDataSourceId();
-
-  if (!dataSourceId) {
-    throw new Error(
-      "NotionのデータソースIDが設定されていません（DATA_SOURCE_ID）。",
-    );
-  }
+  const dataSourceId = requireEnv(
+    "DATA_SOURCE_ID",
+    "NotionのデータソースIDが設定されていません（DATA_SOURCE_ID）。",
+  );
 
   const today = dayjs().format("YYYY-MM-DD");
-  // await generateJournalFeedback({ type: "morning", date: today, payload });
 
   const children: any[] = [
     {
@@ -156,7 +112,7 @@ export async function addNightJournal(payload: NightJournalPayload) {
       type: "data_source_id",
       data_source_id: dataSourceId,
     },
-    properties: getCommonProperties(
+    properties: buildTaskProperties(
       `${today} ナイトジャーナル`,
       "ナイトジャーナル",
     ),

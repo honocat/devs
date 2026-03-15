@@ -1,10 +1,9 @@
-import fs from "fs/promises";
-import path from "path";
+import { lifeFilePath } from "./lifePaths.js";
+import { readJsonFile, writeJsonFile } from "./localJsonStore.js";
 
-const LIFE_DIR = path.join(process.env.HOME ?? process.cwd(), ".life-cli");
-const LIFE_GOAL_FILE_PATH = path.join(LIFE_DIR, "lifeGoal.json");
-const YEARLY_GOAL_FILE_PATH = path.join(LIFE_DIR, "yearlyGoal.json");
-const MONTHLY_GOAL_FILE_PATH = path.join(LIFE_DIR, "monthlyGoal.json");
+const LIFE_GOAL_FILE_PATH = lifeFilePath("lifeGoal.json");
+const YEARLY_GOAL_FILE_PATH = lifeFilePath("yearlyGoal.json");
+const MONTHLY_GOAL_FILE_PATH = lifeFilePath("monthlyGoal.json");
 
 const DEFAULT_GOAL = "まだ生涯目標は設定されていません。";
 
@@ -12,76 +11,45 @@ type GoalConfig = {
   goal: string;
 };
 
-export async function loadLifeGoal() {
-  try {
-    const raw = await fs.readFile(LIFE_GOAL_FILE_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as GoalConfig;
-
-    if (typeof parsed.goal !== "string" || parsed.goal.trim().length === 0) {
-      return DEFAULT_GOAL;
-    }
-
-    return parsed.goal;
-  } catch {
+function normalizeGoal(parsed: GoalConfig) {
+  if (typeof parsed.goal !== "string" || parsed.goal.trim().length === 0) {
     return DEFAULT_GOAL;
   }
+
+  return parsed.goal;
+}
+
+async function loadGoal(filePath: string) {
+  const parsed = await readJsonFile<GoalConfig>(filePath, { goal: "" });
+  return normalizeGoal(parsed);
+}
+
+async function saveGoal(filePath: string, goal: string) {
+  await writeJsonFile(filePath, { goal });
+}
+
+export async function loadLifeGoal() {
+  return loadGoal(LIFE_GOAL_FILE_PATH);
 }
 
 export async function saveLifeGoal(goal: string) {
-  await fs.mkdir(LIFE_DIR, { recursive: true });
-  await fs.writeFile(
-    LIFE_GOAL_FILE_PATH,
-    JSON.stringify({ goal }, null, 2),
-    "utf-8",
-  );
+  await saveGoal(LIFE_GOAL_FILE_PATH, goal);
 }
 
 export async function loadYearlyGoal() {
-  try {
-    const raw = await fs.readFile(YEARLY_GOAL_FILE_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as GoalConfig;
-
-    if (typeof parsed.goal !== "string" || parsed.goal.trim().length === 0) {
-      return DEFAULT_GOAL;
-    }
-
-    return parsed.goal;
-  } catch {
-    return DEFAULT_GOAL;
-  }
+  return loadGoal(YEARLY_GOAL_FILE_PATH);
 }
 
 export async function saveYearlyGoal(goal: string) {
-  await fs.mkdir(LIFE_DIR, { recursive: true });
-  await fs.writeFile(
-    YEARLY_GOAL_FILE_PATH,
-    JSON.stringify({ goal }, null, 2),
-    "utf-8",
-  );
+  await saveGoal(YEARLY_GOAL_FILE_PATH, goal);
 }
 
 export async function loadMonthlyGoal() {
-  try {
-    const raw = await fs.readFile(MONTHLY_GOAL_FILE_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as GoalConfig;
-
-    if (typeof parsed.goal !== "string" || parsed.goal.trim().length === 0) {
-      return DEFAULT_GOAL;
-    }
-
-    return parsed.goal;
-  } catch {
-    return DEFAULT_GOAL;
-  }
+  return loadGoal(MONTHLY_GOAL_FILE_PATH);
 }
 
 export async function saveMonthlyGoal(goal: string) {
-  await fs.mkdir(LIFE_DIR, { recursive: true });
-  await fs.writeFile(
-    MONTHLY_GOAL_FILE_PATH,
-    JSON.stringify({ goal }, null, 2),
-    "utf-8",
-  );
+  await saveGoal(MONTHLY_GOAL_FILE_PATH, goal);
 }
 
 export { LIFE_GOAL_FILE_PATH, DEFAULT_GOAL };

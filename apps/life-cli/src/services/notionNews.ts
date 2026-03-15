@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { notion } from "./notionClient.js";
+import { requireOneOfEnv } from "./env.js";
 
 type PastNews = {
   title: string;
@@ -16,21 +17,15 @@ export type AnalyzedNews = {
   insight: string[];
 };
 
-const getNewsDataSourceId = () =>
-  process.env.DATA_SOURCE_ID_NEWS ?? process.env.DATA_SOURCE_ID;
-
-function getDataSourceIdOrThrow() {
-  const id = getNewsDataSourceId();
-  if (!id) {
-    throw new Error(
-      "ニュース用NotionデータソースIDが未設定です（DATA_SOURCE_ID_NEWS または DATA_SOURCE_ID）。",
-    );
-  }
-  return id;
+function getNewsDataSourceIdOrThrow() {
+  return requireOneOfEnv(
+    ["DATA_SOURCE_ID_NEWS", "DATA_SOURCE_ID"],
+    "ニュース用NotionデータソースIDが未設定です（DATA_SOURCE_ID_NEWS または DATA_SOURCE_ID）。",
+  ).value;
 }
 
 export async function fetchPastMonthNews(): Promise<PastNews[]> {
-  const dataSourceId = getDataSourceIdOrThrow();
+  const dataSourceId = getNewsDataSourceIdOrThrow();
   const from = dayjs().subtract(30, "day").toISOString();
 
   const result = await notion.dataSources.query({
@@ -70,7 +65,7 @@ export async function fetchPastMonthNews(): Promise<PastNews[]> {
 }
 
 export async function saveAnalyzedNewsItems(items: AnalyzedNews[]) {
-  const dataSourceId = getDataSourceIdOrThrow();
+  const dataSourceId = getNewsDataSourceIdOrThrow();
 
   for (const item of items) {
     const created = await notion.pages.create({

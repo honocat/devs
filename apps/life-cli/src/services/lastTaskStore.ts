@@ -1,8 +1,7 @@
-import fs from "fs/promises";
-import path from "path";
+import { lifeFilePath } from "./lifePaths.js";
+import { readJsonFile, writeJsonFile } from "./localJsonStore.js";
 
-const LIFE_DIR = path.join(process.env.HOME ?? process.cwd(), ".life-cli");
-const LAST_TASK_FILE_PATH = path.join(LIFE_DIR, "lastTask.json");
+const LAST_TASK_FILE_PATH = lifeFilePath("lastTask.json");
 
 const DEFAULT_LAST_TASK = {
   tomorrowTask: "今日やることは設定されていません。",
@@ -14,25 +13,23 @@ type LastTaskData = {
   updatedAt: string;
 };
 
-export async function loadLastTask(): Promise<LastTaskData | null> {
-  try {
-    const raw = await fs.readFile(LAST_TASK_FILE_PATH, "utf-8");
-    const parsed = JSON.parse(raw) as Partial<LastTaskData>;
+export async function loadLastTask(): Promise<LastTaskData> {
+  const parsed = await readJsonFile<Partial<LastTaskData>>(
+    LAST_TASK_FILE_PATH,
+    {},
+  );
 
-    if (typeof parsed.tomorrowTask !== "string") {
-      return DEFAULT_LAST_TASK;
-    }
-
-    return {
-      tomorrowTask: parsed.tomorrowTask,
-      updatedAt:
-        typeof parsed.updatedAt === "string"
-          ? parsed.updatedAt
-          : new Date(0).toISOString(),
-    };
-  } catch {
+  if (typeof parsed.tomorrowTask !== "string") {
     return DEFAULT_LAST_TASK;
   }
+
+  return {
+    tomorrowTask: parsed.tomorrowTask,
+    updatedAt:
+      typeof parsed.updatedAt === "string"
+        ? parsed.updatedAt
+        : new Date(0).toISOString(),
+  };
 }
 
 export async function saveLastTask(tomorrowTask: string) {
@@ -41,10 +38,5 @@ export async function saveLastTask(tomorrowTask: string) {
     updatedAt: new Date().toISOString(),
   };
 
-  await fs.mkdir(LIFE_DIR, { recursive: true });
-  await fs.writeFile(
-    LAST_TASK_FILE_PATH,
-    JSON.stringify(data, null, 2),
-    "utf-8",
-  );
+  await writeJsonFile(LAST_TASK_FILE_PATH, data);
 }

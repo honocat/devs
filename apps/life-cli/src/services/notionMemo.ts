@@ -1,32 +1,18 @@
 import { notion } from "./notionClient.js";
+import { requireEnv } from "./env.js";
+import { buildTaskProperties } from "./notionProps.js";
 
 export async function addMemo(title: string, tag: string) {
+  const dataSourceId = requireEnv(
+    "DATA_SOURCE_ID",
+    "NotionのデータソースIDが設定されていません（DATA_SOURCE_ID）。",
+  );
+
   await notion.pages.create({
     parent: {
       type: "data_source_id",
-      data_source_id: process.env.DATA_SOURCE_ID!,
+      data_source_id: dataSourceId,
     },
-
-    properties: {
-      名前: {
-        title: [
-          {
-            text: { content: title },
-          },
-        ],
-      },
-
-      タグ: {
-        multi_select: [{ name: tag }],
-      },
-
-      作成日時: {
-        date: { start: new Date().toISOString() },
-      },
-
-      ステータス: {
-        status: { name: "未着手" },
-      },
-    },
+    properties: buildTaskProperties(title, tag),
   });
 }
