@@ -1,7 +1,0 @@
-- 準備
-  - iterm2
-    - `brew install --cask iterm2`
-  - Notion
-    - Database
-    - API Key
-- Typescriptで実装
