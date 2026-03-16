@@ -1,8 +1,8 @@
-# iTerm2から一瞬でNotion DBにメモを追加する: Notion API + TypeScript製CLI
+# Terminalから一瞬でNotion DBにメモを追加する: Notion API + TypeScript製CLI
 
 ## 概要
 
-この記事では、Notion API（公式SDKの`@notionhq/client`）を使って、ターミナルからNotionのデータベース（データソース）へメモ（ページ）を追加する最小のCLIを作ります。iTerm2で`sample memo`コマンドを叩いて1行入力すると、Notion側にページが追加されるところまでをゴールにします。
+この記事では、Notion API（公式SDKの`@notionhq/client`）を使って、ターミナルからNotionのデータベース（データソース）へメモ（ページ）を追加する最小のCLIを作ります。ターミナルで`sample-cli memo`コマンドを叩いて1行入力すると、Notion側にページが追加されるところまでをゴールにします。
 
 [gif: life-cli.gif]
 
@@ -18,6 +18,8 @@
 - [Node.js](https://nodejs.org/ja)
   - 著者はHomebrewでインストール（`brew install node`）
 - [iTerm2](https://iterm2.com/) (macOS)
+  - Hotkey Windowで、より労力を減らすことができるため採用
+  - 他のエミュレータでも可
 - [Notion](https://www.notion.com/ja)アカウント
 - [Notionインテグレーション](https://developers.notion.com/)（Notion API Key）
 
@@ -276,7 +278,7 @@ $ npx tsc --init
     // For nodejs:
     // "lib": ["esnext"],
 -   // "types": ["node"],
-+   // "types": ["node"],
++   "types": ["node"],
     // and npm install -D @types/node
 
     // Other Outputs
@@ -518,9 +520,9 @@ alias m='sample-cli memo'
 
 Notionのトークンはパスワード相当なので、扱いを決めておくと安心です。`.env`はgit管理しないようにして、公開リポジトリに混ざらない状態を保ちます。また、ターミナルのログやスクリーンショットにトークンが映り込まないように注意してください。権限スコープについても、必要以上に広げず、今回の用途であれば「対象データベースにだけ共有する」を基本にすると事故を減らせます。
 
-## 発展: 日記/家計簿に広げる
+## 発展: 日記 / 家計簿などに広げる
 
-`memo`が動いたら、同じパターンでコマンドを増やせます。増やすときに悩みがちなのが「データベースを分けるか、統合するか」です。用途ごとに必要なプロパティが大きく違うならデータベースを分けたほうが運用しやすく、検索や集計を横断して行いたいなら1つに統合したほうが扱いやすくなります。
+`memo`が動いたら、同じパターンでコマンドを増やせます。例えば、コマンドひとつで日記を書いたり、家計簿に出費を記録したりできます。また、増やすときに悩みがちなのが「データベースを分けるか、統合するか」です。用途ごとに必要なプロパティが大きく違うならデータベースを分けたほうが運用しやすく、検索や集計を横断して行いたいなら1つに統合したほうが扱いやすくなります。
 
 著者は、メモ・タスク・日記を同じデータベースに統合しタグで管理している他、家計簿は`DATA_SOURCE_ID_BALANCE`、日々のニュース収集・分析は`DATA_SOURCE_ID_NEWS`のように用途別のデータベースを別で用意しています。
 
