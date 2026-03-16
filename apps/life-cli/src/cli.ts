@@ -10,6 +10,7 @@ import { runMorningJournal } from "./commands/morningJournal.js";
 import { runMemo } from "./commands/memo.js";
 import { runNews } from "./commands/news.js";
 import { runNightJournal } from "./commands/nightJournal.js";
+import { runWord } from "./commands/word.js";
 
 type CommandAction = () => Promise<void>;
 
@@ -36,6 +37,7 @@ const commandDefinitions: CommandDefinition[] = [
     action: runBalance,
   },
   { name: "goal", alias: "g", description: "show goals", action: runGoal },
+  { name: "word", alias: "w", description: "add word", action: runWord },
   {
     name: "morning-journal",
     alias: "mj",
