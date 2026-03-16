@@ -17,12 +17,14 @@ import {
   addMorningJournal,
   assertNotionConnection,
 } from "../services/notionJournal.js";
+import { saveTodayFocus } from "../services/todayFocusStore.js";
 import { runFramedCommand } from "../utils/commandFrame.js";
 import { runNews } from "./news.js";
 
 export async function runMorningJournal() {
   await runFramedCommand(async () => {
-    console.log(chalk.white(`📅 今日の日付: ${dayjs().format("YYYY-MM-DD")}`));
+    const today = dayjs().format("YYYY-MM-DD");
+    console.log(chalk.white(`📅 今日の日付: ${today}`));
 
     await assertNotionConnection();
     console.log(chalk.green("✔ Notion接続OK"));
@@ -52,6 +54,11 @@ export async function runMorningJournal() {
     const answers = await morningJournalPrompt();
     await saveYearlyGoal(answers.targetY);
     await saveMonthlyGoal(answers.target3M);
+    await saveTodayFocus({
+      date: today,
+      smallWin: answers.smallWin,
+      task: answers.task,
+    });
     await addMorningJournal(answers);
     console.log(chalk.green("✔ morning journal added"));
 

@@ -4,6 +4,8 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { runBalance } from "./commands/balance.js";
 import { runDiary } from "./commands/diary.js";
+import { runEnglish } from "./commands/english.js";
+import { runGoal } from "./commands/goal.js";
 import { runMorningJournal } from "./commands/morningJournal.js";
 import { runMemo } from "./commands/memo.js";
 import { runNews } from "./commands/news.js";
@@ -22,11 +24,18 @@ const commandDefinitions: CommandDefinition[] = [
   { name: "memo", alias: "m", description: "add memo", action: runMemo },
   { name: "diary", alias: "d", description: "write diary", action: runDiary },
   {
+    name: "english",
+    alias: "en",
+    description: "write JP->EN and get Gemini review",
+    action: runEnglish,
+  },
+  {
     name: "balance",
     alias: "b",
     description: "add balance",
     action: runBalance,
   },
+  { name: "goal", alias: "g", description: "show goals", action: runGoal },
   {
     name: "morning-journal",
     alias: "mj",
