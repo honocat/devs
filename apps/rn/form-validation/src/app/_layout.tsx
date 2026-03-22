@@ -1,5 +1,5 @@
-import { StatusBar } from "expo-status-bar";
 import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import "@/global.css";
@@ -8,7 +8,7 @@ export default function RootLayout() {
   return (
     <GluestackUIProvider>
       <Stack screenOptions={{ headerShown: false }} />
-      <StatusBar style="auto" />
+      <StatusBar />
     </GluestackUIProvider>
   );
 }
