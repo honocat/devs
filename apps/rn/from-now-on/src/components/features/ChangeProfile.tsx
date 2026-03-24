@@ -1,0 +1,19 @@
+import { TouchableOpacity } from "react-native";
+import { Link } from "expo-router";
+
+import { Icon, ChevronRightIcon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+
+const accordionStyle =
+  "w-full flex-row justify-between items-center focus:outline-none data-[disabled=true]:opacity-40 data-[disabled=true]:cursor-not-allowed data-[focus-visible=true]:bg-background-50 py-3 px-4";
+
+export default function ChangeProfile() {
+  return (
+    <Link asChild href="/account/profile" className={accordionStyle}>
+      <TouchableOpacity>
+        <Text size="xl">プロフィール</Text>
+        <Icon as={ChevronRightIcon} />
+      </TouchableOpacity>
+    </Link>
+  );
+}
