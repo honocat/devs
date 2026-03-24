@@ -8,7 +8,6 @@ import {
   loadLifeGoal,
   saveLifeGoal,
   loadYearlyGoal,
-  saveYearlyGoal,
   loadMonthlyGoal,
   saveMonthlyGoal,
 } from "../services/goalsStore.js";
@@ -17,6 +16,7 @@ import {
   addMorningJournal,
   assertNotionConnection,
 } from "../services/notionJournal.js";
+import { loadTenYearVision } from "../services/tenYearVisionStore.js";
 import { saveTodayFocus } from "../services/todayFocusStore.js";
 import { runFramedCommand } from "../utils/commandFrame.js";
 import { runNews } from "./news.js";
@@ -34,25 +34,27 @@ export async function runMorningJournal() {
     console.log(chalk.white(chalk.bold(currentGoal)));
     console.log();
 
+    const tenYearVision = await loadTenYearVision();
+    console.log(chalk.cyan("🧭 10年後のなりたい姿"));
+    console.log(chalk.white(chalk.bold(tenYearVision)));
+    console.log();
+
     const currentYearlyGoal = await loadYearlyGoal();
-    console.log(chalk.cyan("🎯 年次目標"));
+    console.log(chalk.cyan("🎯 この1年の目標（Night Journalより）"));
     console.log(chalk.white(chalk.bold(currentYearlyGoal)));
     console.log();
 
     const currentMonthlyGoal = await loadMonthlyGoal();
-    console.log(chalk.cyan("🎯 月次目標"));
+    console.log(chalk.cyan("🎯 直近3ヶ月の目標"));
     console.log(chalk.white(chalk.bold(currentMonthlyGoal)));
     console.log();
 
     const lastTask = await loadLastTask();
-    if (lastTask) {
-      console.log(chalk.cyan("\n🌙 昨夜の予定"));
-      console.log(chalk.white(`- ${lastTask.tomorrowTask}`));
-      console.log();
-    }
+    console.log(chalk.cyan("🌙 明日やること（Night Journalより）"));
+    console.log(chalk.white(`- ${lastTask.tomorrowTask}`));
+    console.log();
 
     const answers = await morningJournalPrompt();
-    await saveYearlyGoal(answers.targetY);
     await saveMonthlyGoal(answers.target3M);
     await saveTodayFocus({
       date: today,

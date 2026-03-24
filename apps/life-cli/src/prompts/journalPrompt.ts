@@ -2,7 +2,6 @@ import inquirer from "inquirer";
 import chalk from "chalk";
 
 export type MorningJournalAnswers = {
-  targetY: string;
   target3M: string;
   smallWin: string;
   task: string;
@@ -13,20 +12,13 @@ export async function morningJournalPrompt(): Promise<MorningJournalAnswers> {
   const answers = await inquirer.prompt([
     {
       type: "input",
-      name: "targetY",
-      message: chalk.cyan(
-        "Q1. 生涯目標を達成するために、今年1年何を目標にしますか？",
-      ),
-    },
-    {
-      type: "input",
       name: "target3M",
-      message: chalk.cyan("Q2. 直近3ヶ月で達成する目標はなんですか？"),
+      message: chalk.cyan("Q1. 直近3ヶ月で達成する目標はなんですか？"),
     },
     {
       type: "input",
       name: "smallWin",
-      message: chalk.cyan("Q4. 今日の最低目標は？"),
+      message: chalk.cyan("Q2. 今日の最低目標は？"),
     },
     {
       type: "input",
@@ -36,12 +28,11 @@ export async function morningJournalPrompt(): Promise<MorningJournalAnswers> {
     {
       type: "input",
       name: "idea",
-      message: chalk.cyan("Q5. 理想の自分は、今日という日をどう過ごしますか？"),
+      message: chalk.cyan("Q4. 理想の自分は、今日という日をどう過ごしますか？"),
     },
   ]);
 
   return {
-    targetY: answers.targetY,
     target3M: answers.target3M,
     smallWin: answers.smallWin,
     task: answers.task,

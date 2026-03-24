@@ -30,12 +30,11 @@ export async function addMorningJournal(payload: MorningJournalPayload) {
     ),
     children: [
       heading2("モーニング・ジャーナル"),
-      ...section("Q1. 1年間の目標は？", payload.targetY),
-      ...section("Q2. 直近3ヶ月の目標は？", payload.target3M),
-      ...section("Q3. 今日の最低目標は？", payload.smallWin),
-      ...section("Q4. 今日やり遂げたいタスクは？", payload.task),
+      ...section("Q1. 直近3ヶ月の目標は？", payload.target3M),
+      ...section("Q2. 今日の最低目標は？", payload.smallWin),
+      ...section("Q3. 今日やり遂げたいタスクは？", payload.task),
       ...section(
-        "Q5. 理想の自分は、今日という日をどう過ごす？",
+        "Q4. 理想の自分は、今日という日をどう過ごす？",
         payload.idea,
       ),
     ],
@@ -61,22 +60,23 @@ export async function addNightJournal(payload: NightJournalPayload) {
 
   const focusReflectionText = [
     `今日の最低目標（朝）: ${todaySmallWin}`,
-    `達成状況: ${payload.smallWinStatus}`,
+    `結果: ${payload.smallWinResult}`,
+    `振り返り: ${payload.smallWinReflection}`,
+    "",
     `今日やり遂げたいタスク（朝）: ${todayTask}`,
-    `達成状況: ${payload.taskStatus}`,
+    `結果: ${payload.taskResult}`,
+    `振り返り: ${payload.taskReflection}`,
   ].join("\n");
 
   const children: any[] = [
     heading2("ナイト・ジャーナル"),
-    ...section("今日のフォーカス振り返り", focusReflectionText),
+    ...section(`${payload.tenYearsLaterLabel}どうなっていたいか`, payload.tenYearVision),
+    ...section("そのためにこの1年何を目標にするか", payload.oneYearGoal),
     ...section("今日感謝したこと", payload.gratitude),
     ...section("今日の気付き・成長", payload.insight),
+    ...section("今日の最低目標・やるべきタスクの振り返り", focusReflectionText),
     ...section("明日やること", payload.tomorrowTask),
   ];
-
-  if (payload.note && payload.note.trim().length > 0) {
-    children.push(...section("自由記述", payload.note.trim()));
-  }
 
   await notion.pages.create({
     parent: {

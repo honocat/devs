@@ -7,7 +7,6 @@ export type TodayFocus = {
 };
 
 export type MorningJournalPayload = {
-  targetY: string;
   target3M: string;
   task: string;
   smallWin: string;
@@ -15,13 +14,16 @@ export type MorningJournalPayload = {
 };
 
 export type NightJournalPayload = {
+  tenYearsLaterLabel: string;
+  tenYearVision: string;
+  oneYearGoal: string;
   gratitude: string;
   insight: string;
+  smallWinResult: "達成" | "未達";
+  smallWinReflection: string;
+  taskResult: "達成" | "未達";
+  taskReflection: string;
   tomorrowTask: string;
-  note?: string;
   todaySmallWin?: string;
   todayTask?: string;
-  smallWinStatus: FocusReflectionStatus;
-  taskStatus: FocusReflectionStatus;
 };
-
