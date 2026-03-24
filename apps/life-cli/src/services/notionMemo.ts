@@ -1,6 +1,7 @@
 import { notion } from "./notionClient.js";
 import { requireEnv } from "./env.js";
 import { buildTaskProperties } from "./notionProps.js";
+import { appendChildrenInChunks } from "./notionAppend.js";
 
 export async function addMemo(title: string, tag: string, children?: any[]) {
   const dataSourceId = requireEnv(
@@ -20,11 +21,5 @@ export async function addMemo(title: string, tag: string, children?: any[]) {
     return;
   }
 
-  const CHUNK_SIZE = 50;
-  for (let i = 0; i < children.length; i += CHUNK_SIZE) {
-    await notion.blocks.children.append({
-      block_id: created.id,
-      children: children.slice(i, i + CHUNK_SIZE),
-    });
-  }
+  await appendChildrenInChunks({ blockId: created.id, children });
 }

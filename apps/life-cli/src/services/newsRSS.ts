@@ -103,6 +103,45 @@ function toReadableText(html: string) {
     .trim();
 }
 
+function extractMetaContent(html: string, key: string) {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const byProperty = new RegExp(
+    `<meta[^>]+property=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+    "i",
+  );
+  const byName = new RegExp(
+    `<meta[^>]+name=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+    "i",
+  );
+
+  const match = html.match(byProperty) ?? html.match(byName);
+  return match?.[1] ? toReadableText(match[1]) : "";
+}
+
+function extractTagInnerHtml(html: string, tagName: string) {
+  const escaped = tagName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const regex = new RegExp(
+    `<${escaped}[^>]*>([\\s\\S]*?)<\\/${escaped}>`,
+    "i",
+  );
+  const match = html.match(regex);
+  return match?.[1] ?? "";
+}
+
+function pickBodyCandidate(candidates: string[]) {
+  const cleaned = candidates
+    .map((c) => toReadableText(c))
+    .map((c) => c.replace(/\s+/g, " ").trim())
+    .filter((c) => c.length > 0);
+
+  const longEnough = cleaned.filter((c) => c.length >= 200);
+  if (longEnough.length > 0) {
+    return longEnough.sort((a, b) => b.length - a.length)[0]!;
+  }
+
+  return cleaned.sort((a, b) => b.length - a.length)[0] ?? "";
+}
+
 async function fetchArticleBody(link: string, timeoutMs = 8000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -122,9 +161,20 @@ async function fetchArticleBody(link: string, timeoutMs = 8000) {
     }
 
     const html = await response.text();
-    const readable = toReadableText(html);
+    const ogDescription = extractMetaContent(html, "og:description");
+    const twitterDescription = extractMetaContent(html, "twitter:description");
+    const articleInner = extractTagInnerHtml(html, "article");
+    const mainInner = extractTagInnerHtml(html, "main");
 
-    return readable.slice(0, 2000);
+    const readable = pickBodyCandidate([
+      ogDescription,
+      twitterDescription,
+      articleInner,
+      mainInner,
+      html,
+    ]);
+
+    return readable.slice(0, 3500);
   } catch {
     return "";
   } finally {

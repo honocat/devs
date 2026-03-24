@@ -2,7 +2,18 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 
 const getGeminiApiKey = () => process.env.GEMINI_API_KEY;
 
-export async function generateGeminiText(prompt: string) {
+export async function generateGeminiText(
+  prompt: string,
+  options?: {
+    generationConfig?: {
+      temperature?: number;
+      topP?: number;
+      topK?: number;
+      maxOutputTokens?: number;
+      responseMimeType?: string;
+    };
+  },
+) {
   const apiKey = getGeminiApiKey();
 
   if (!apiKey) {
@@ -17,6 +28,9 @@ export async function generateGeminiText(prompt: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        ...(options?.generationConfig
+          ? { generationConfig: options.generationConfig }
+          : {}),
         contents: [
           {
             role: "user",

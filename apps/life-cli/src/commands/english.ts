@@ -9,6 +9,12 @@ import {
   parseJsonFromGeminiText,
 } from "../services/geminiClient.js";
 import { addMemo } from "../services/notionMemo.js";
+import {
+  bulletsFromLines,
+  heading2,
+  heading3,
+  paragraphsFromLongText,
+} from "../services/notionBlocks.js";
 import { runFramedCommand } from "../utils/commandFrame.js";
 
 type ErrorSpotType =
@@ -38,89 +44,6 @@ type EnglishReview = {
     note?: string;
   }>;
 };
-
-const MAX_RICH_TEXT_CHARS = 1800;
-
-function splitToChunks(text: string, maxChars: number) {
-  const chunks: string[] = [];
-  let rest = text;
-
-  while (rest.length > maxChars) {
-    chunks.push(rest.slice(0, maxChars));
-    rest = rest.slice(maxChars);
-  }
-
-  if (rest.length > 0) {
-    chunks.push(rest);
-  }
-
-  return chunks;
-}
-
-function toParagraphBlocks(text: string) {
-  const normalized = text.replace(/\r\n/g, "\n").trim();
-  if (normalized.length === 0) {
-    return [];
-  }
-
-  const paragraphs = normalized.split(/\n{2,}/g);
-  const blocks: any[] = [];
-
-  for (const paragraph of paragraphs) {
-    const trimmed = paragraph.trim();
-    if (trimmed.length === 0) {
-      continue;
-    }
-
-    for (const chunk of splitToChunks(trimmed, MAX_RICH_TEXT_CHARS)) {
-      blocks.push({
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [{ type: "text", text: { content: chunk } }],
-        },
-      });
-    }
-  }
-
-  return blocks;
-}
-
-function heading3(text: string) {
-  return {
-    object: "block",
-    type: "heading_3",
-    heading_3: {
-      rich_text: [{ type: "text", text: { content: text } }],
-    },
-  };
-}
-
-function heading2(text: string) {
-  return {
-    object: "block",
-    type: "heading_2",
-    heading_2: {
-      rich_text: [{ type: "text", text: { content: text } }],
-    },
-  };
-}
-
-function bullet(text: string) {
-  const normalized = text.replace(/\r\n/g, "\n").trim();
-  if (normalized.length === 0) {
-    return null;
-  }
-
-  const chunks = splitToChunks(normalized, MAX_RICH_TEXT_CHARS);
-  return chunks.map((chunk) => ({
-    object: "block",
-    type: "bulleted_list_item",
-    bulleted_list_item: {
-      rich_text: [{ type: "text", text: { content: chunk } }],
-    },
-  }));
-}
 
 function buildReviewPrompt(japanese: string, english: string) {
   return `
@@ -226,40 +149,37 @@ function buildNotionChildren(
 
   children.push(heading2("英作文"));
   children.push(heading3("User English"));
-  children.push(...toParagraphBlocks(english));
+  children.push(...paragraphsFromLongText(english));
 
   children.push(heading3("Gemini Review"));
 
   if ("raw" in review) {
-    children.push(...toParagraphBlocks(review.raw));
+    children.push(...paragraphsFromLongText(review.raw));
     return children;
   }
 
-  children.push(...toParagraphBlocks(`Score: ${review.score}/10`));
-  children.push(...toParagraphBlocks(review.overall_comment));
+  children.push(...paragraphsFromLongText(`Score: ${review.score}/10`));
+  children.push(...paragraphsFromLongText(review.overall_comment));
 
   children.push(heading3("Error Spots"));
   if (review.error_spots.length === 0) {
-    children.push(...toParagraphBlocks("（大きな誤りは見つかりませんでした）"));
+    children.push(...paragraphsFromLongText("（大きな誤りは見つかりませんでした）"));
   } else {
     for (const spot of review.error_spots) {
       const line = `[${spot.type}] "${spot.quote}"\nissue: ${spot.issue}\nfix: ${spot.fix}`;
-      const bullets = bullet(line);
-      if (bullets) {
-        children.push(...bullets);
-      }
+      children.push(...bulletsFromLines([line]));
     }
   }
 
   children.push(heading3("Corrected Version"));
-  children.push(...toParagraphBlocks(review.corrected_version));
+  children.push(...paragraphsFromLongText(review.corrected_version));
 
   children.push(heading3("Natural Version"));
-  children.push(...toParagraphBlocks(review.natural_version));
+  children.push(...paragraphsFromLongText(review.natural_version));
 
   children.push(heading3("Important Phrases"));
   if (review.important_phrases.length === 0) {
-    children.push(...toParagraphBlocks("（なし）"));
+    children.push(...paragraphsFromLongText("（なし）"));
   } else {
     for (const p of review.important_phrases) {
       const note =
@@ -267,10 +187,7 @@ function buildNotionChildren(
           ? ` / note: ${p.note.trim()}`
           : "";
       const line = `${p.phrase} — ${p.meaning_ja}${note}`;
-      const bullets = bullet(line);
-      if (bullets) {
-        children.push(...bullets);
-      }
+      children.push(...bulletsFromLines([line]));
     }
   }
 

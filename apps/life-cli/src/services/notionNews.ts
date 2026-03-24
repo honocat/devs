@@ -1,6 +1,13 @@
 import dayjs from "dayjs";
 import { notion } from "./notionClient.js";
 import { requireOneOfEnv } from "./env.js";
+import { appendChildrenInChunks } from "./notionAppend.js";
+import {
+  bulletsFromLines,
+  heading2,
+  paragraph,
+  paragraphsFromLongText,
+} from "./notionBlocks.js";
 
 type PastNews = {
   title: string;
@@ -11,6 +18,8 @@ export type AnalyzedNews = {
   title: string;
   summary: string;
   source: string;
+  link: string;
+  body: string;
   detail: string;
   trend_context: string;
   future_outlook: string;
@@ -92,73 +101,21 @@ export async function saveAnalyzedNewsItems(items: AnalyzedNews[]) {
       },
     });
 
-    await notion.blocks.children.append({
-      block_id: created.id,
+    await appendChildrenInChunks({
+      blockId: created.id,
       children: [
-        {
-          object: "block",
-          type: "heading_2",
-          heading_2: {
-            rich_text: [{ type: "text", text: { content: "📰ニュース詳細" } }],
-          },
-        },
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [{ type: "text", text: { content: item.detail } }],
-          },
-        },
-        {
-          object: "block",
-          type: "heading_2",
-          heading_2: {
-            rich_text: [
-              { type: "text", text: { content: "📈ニュースの流れ" } },
-            ],
-          },
-        },
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [
-              { type: "text", text: { content: item.trend_context } },
-            ],
-          },
-        },
-        {
-          object: "block",
-          type: "heading_2",
-          heading_2: {
-            rich_text: [{ type: "text", text: { content: "🔮今後の展望" } }],
-          },
-        },
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [
-              { type: "text", text: { content: item.future_outlook } },
-            ],
-          },
-        },
-        {
-          object: "block",
-          type: "heading_2",
-          heading_2: {
-            rich_text: [
-              { type: "text", text: { content: "💡ビジネス的示唆" } },
-            ],
-          },
-        },
-        ...item.insight.map((line) => ({
-          object: "block" as const,
-          type: "bulleted_list_item" as const,
-          bulleted_list_item: {
-            rich_text: [{ type: "text" as const, text: { content: line } }],
-          },
-        })),
+        heading2("📰ニュース詳細"),
+        paragraph(item.detail),
+        heading2("📈ニュースの流れ"),
+        paragraph(item.trend_context),
+        heading2("🔮今後の展望"),
+        paragraph(item.future_outlook),
+        heading2("💡ビジネス的示唆"),
+        ...bulletsFromLines(item.insight),
+        heading2("🔗リンク"),
+        paragraph(item.link),
+        heading2("🧾取得本文（先頭）"),
+        ...paragraphsFromLongText(item.body.slice(0, 3500)),
       ],
     });
   }

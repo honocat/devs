@@ -1,5 +1,6 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
+import { optionalTrim } from "../utils/strings.js";
 
 export type JapaneseEssayAnswers = {
   japanese: string;
@@ -18,7 +19,7 @@ export async function japaneseEssayPrompt(): Promise<JapaneseEssayAnswers> {
         "日本語で文章を書いてください（トピック自由・1文でもOK）",
       ),
       validate: (value: unknown) => {
-        if (typeof value !== "string" || value.trim().length === 0) {
+        if (!optionalTrim(value)) {
           return "空は不可です。";
         }
         return true;
@@ -38,11 +39,9 @@ export async function englishEssayPrompt(
       name: "english",
       message: chalk.cyan("上の日本語を英語で書いてください"),
       default:
-        typeof defaultEnglish === "string" && defaultEnglish.trim().length > 0
-          ? defaultEnglish
-          : undefined,
+        optionalTrim(defaultEnglish) ? defaultEnglish : undefined,
       validate: (value: unknown) => {
-        if (typeof value !== "string" || value.trim().length === 0) {
+        if (!optionalTrim(value)) {
           return "空は不可です。";
         }
         return true;
@@ -65,4 +64,3 @@ export async function retryEnglishPrompt(): Promise<{ retry: boolean }> {
 
   return { retry: Boolean(answers.retry) };
 }
-

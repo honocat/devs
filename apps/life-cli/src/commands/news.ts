@@ -5,7 +5,6 @@ import {
 } from "../services/geminiClient.js";
 import {
   AnalyzedNews,
-  fetchPastMonthNews,
   saveAnalyzedNewsItems,
 } from "../services/notionNews.js";
 import { enrichNewsWithBody, fetchBusinessNews } from "../services/newsRSS.js";
@@ -16,7 +15,9 @@ type SelectedNews = {
   source: string;
 };
 
-type NewsForAnalysis = SelectedNews & {
+type NewsForAnalysisInput = SelectedNews & {
+  id: number;
+  link: string;
   body: string;
 };
 
@@ -29,6 +30,18 @@ function normalizeText(value: string) {
     .replace(/[｜|].*$/g, "")
     .replace(/[-–—ー]\s*[^-–—ー]+$/g, "")
     .trim();
+}
+
+function normalizeForMatch(value: string) {
+  return value.normalize("NFKC").replace(/\s+/g, "");
+}
+
+function isExtractedFromBody(body: string, excerpt: string) {
+  const normalizedExcerpt = normalizeForMatch(excerpt);
+  if (normalizedExcerpt.length === 0 || excerpt === "不明") {
+    return true;
+  }
+  return normalizeForMatch(body).includes(normalizedExcerpt);
 }
 
 function pickSelectedNewsItems(
@@ -134,17 +147,13 @@ function buildSelectPrompt(
 }
 
 function buildAnalyzePrompt(
-  pastNews: { title: string; summary: string }[],
-  selected: NewsForAnalysis[],
+  selected: NewsForAnalysisInput[],
 ) {
-  const pastContext = pastNews.length
-    ? pastNews.map((item) => `- ${item.title} : ${item.summary}`).join("\n")
-    : "- （過去ニュースなし）";
-
   return `
-        あなたはテック業界に詳しいビジネスアナリストです。
-        入力されるニュースを、以下のユーザに向けて分析してください。
-        出力は下記形式に則ったJSONのみです。
+        あなたはニュースの「抽出要約」ツールです。
+        入力として渡される各ニュースの本文（body）から、事実だけを抜き出してください。
+        重要: bodyに書いていない情報は絶対に書かない（推測・補完・外部知識は禁止）。
+        出力は必ず JSON のみ（前後の説明文やコードフェンス禁止）。
 
         【ユーザプロファイル】
         - 日本企業で働くソフトウェアエンジニア
@@ -155,39 +164,37 @@ function buildAnalyzePrompt(
             - プロダクト開発への影響
             - エンジニアのキャリア
         
-        【分析内容】
-        1. ニュース要約
-        2. 技術 / ビジネス背景
-        3. 過去ニュースとの関連性
-        4. 今後の展望
-        5. エンジニアへの示唆
+        【抽出ルール】
+        - summary/detail/trend_context/future_outlook/insight は、必ず body に含まれる文字列をそのまま使う
+        - 言い換え・要約・推測は禁止（コピペに近い抽出のみ）
+        - body に根拠がない場合は "不明"、insight は [] にする
+        - 出力内の id は入力と同じ id を必ず返す
 
         【出力形式】
         [
             {
-                "title": "タイトル",
-                "summary": "50文字程度の要約",
-                "source": "メディア名",
-                "detail": "ニュース詳細（200文字程度）",
-                "trend_context": "過去ニュースとの関連",
-                "future_outlook": "今後の展開予測",
-                "insight": ["示唆1", "示唆2", "示唆3"]
+                "id": 0,
+                "summary": "本文からの抜粋（短く）。無ければ不明",
+                "detail": "本文からの抜粋（長め）。無ければ不明",
+                "trend_context": "本文に過去ニュースとの関連が書いてあればその抜粋。無ければ不明",
+                "future_outlook": "本文に今後の展望が書いてあればその抜粋。無ければ不明",
+                "insight": ["本文に明示的に書かれている示唆の抜粋のみ。なければ[]"]
             }
         ]
-        
-        【タイトル生成ルール】
-        - タイトルが長い場合は40文字以内に要約する
-        - 意味は変えない
-        - 末尾の「- 〇〇新聞」「- Reuters」などの媒体名は削除する
-        - 無駄な修飾語は省き、要点だけにする
-
-        【過去1ヶ月のニュース】
-        ${pastContext}
 
         【本日のニュース（本文付き）】
         ${JSON.stringify(selected, null, 2)}
     `;
 }
+
+type GeminiExtractiveOutput = {
+  id: number;
+  summary: string;
+  detail: string;
+  trend_context: string;
+  future_outlook: string;
+  insight: string[];
+};
 
 export async function runNews() {
   await runFramedCommand(async () => {
@@ -218,20 +225,85 @@ export async function runNews() {
       chalk.green(`✔ ニュース本文を取得: ${enrichedSelected.length}件`),
     );
 
-    const pastNews = await fetchPastMonthNews();
-    console.log(chalk.green(`✔ 過去1ヶ月のニュース参照: ${pastNews.length}件`));
-
-    const analyzedText = await generateGeminiText(
-      buildAnalyzePrompt(
-        pastNews,
-        enrichedSelected.map(({ title, source, body }) => ({
-          title,
-          source,
-          body,
-        })),
-      ),
+    const analysisInputs: NewsForAnalysisInput[] = enrichedSelected.map(
+      ({ title, source, body, link }, index) => ({
+        id: index,
+        title,
+        source,
+        link,
+        body,
+      }),
     );
-    const analyzed = parseJsonFromGeminiText<AnalyzedNews[]>(analyzedText);
+
+    let geminiOutput: GeminiExtractiveOutput[] = [];
+    try {
+      const analyzedText = await generateGeminiText(
+        buildAnalyzePrompt(analysisInputs),
+        {
+          generationConfig: {
+            temperature: 0,
+            topP: 0.1,
+            responseMimeType: "application/json",
+          },
+        },
+      );
+      geminiOutput = parseJsonFromGeminiText<GeminiExtractiveOutput[]>(
+        analyzedText,
+      );
+    } catch (error) {
+      console.log(
+        chalk.yellow(
+          "⚠ Geminiの抽出要約に失敗したため、本文のみ保存できる形で処理を継続します。",
+        ),
+      );
+      console.log(chalk.gray(String(error)));
+    }
+
+    const outputsById = new Map<number, GeminiExtractiveOutput>();
+    for (const out of geminiOutput) {
+      if (typeof out?.id === "number" && Number.isFinite(out.id)) {
+        outputsById.set(out.id, out);
+      }
+    }
+
+    const analyzed: AnalyzedNews[] = analysisInputs.map((input) => {
+      const out = outputsById.get(input.id);
+      const safe = {
+        summary: out?.summary ?? "不明",
+        detail: out?.detail ?? "不明",
+        trend_context: out?.trend_context ?? "不明",
+        future_outlook: out?.future_outlook ?? "不明",
+        insight: Array.isArray(out?.insight) ? out!.insight : [],
+      };
+
+      const summary = isExtractedFromBody(input.body, safe.summary)
+        ? safe.summary
+        : "不明";
+      const detail = isExtractedFromBody(input.body, safe.detail)
+        ? safe.detail
+        : "不明";
+      const trend_context = isExtractedFromBody(input.body, safe.trend_context)
+        ? safe.trend_context
+        : "不明";
+      const future_outlook = isExtractedFromBody(input.body, safe.future_outlook)
+        ? safe.future_outlook
+        : "不明";
+      const insight = safe.insight.filter((line) =>
+        typeof line === "string" ? isExtractedFromBody(input.body, line) : false,
+      );
+
+      return {
+        title: input.title,
+        source: input.source,
+        link: input.link,
+        body: input.body,
+        summary,
+        detail,
+        trend_context,
+        future_outlook,
+        insight,
+      };
+    });
 
     await saveAnalyzedNewsItems(analyzed);
 
