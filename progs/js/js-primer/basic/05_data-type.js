@@ -56,3 +56,25 @@ const obj = {
 };
 console.log(obj.key);
 console.log(obj["key"]);
+
+const object = {
+  123: "value",
+};
+console.log(object["123"]);
+
+// array
+const array = [1, 2, 3];
+console.log(array[0]);
+
+// RegExp
+const numberRegExp = /\d+/;
+console.log(numberRegExp.test("123"));
+
+// primitive & wrapper object
+const wraStr = new String("string");
+console.log(wraStr, typeof wrapperStr); // object
+console.log(wraStr.length);
+
+const priStr = "string";
+console.log(priStr); // string
+console.log(priStr.length);
