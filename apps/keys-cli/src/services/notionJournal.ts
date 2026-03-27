@@ -1,14 +1,23 @@
 import { notion, requireEnv } from "./notionClient.js";
+
 import {
   type MorningJournalAnswers,
   type NightJournalAnswers,
 } from "../prompts/journalPrompt.js";
+
+import {
+  Title,
+  MultiSelect,
+  DateProp,
+  Status,
+} from "../utils/notionProperties.js";
+
 import {
   bulletedList,
   heading2,
   paragraph,
   section,
-} from "./notionChildren.js";
+} from "../utils/notionChildren.js";
 
 export async function addMorningJournal(
   answers: MorningJournalAnswers,
@@ -26,10 +35,10 @@ export async function addMorningJournal(
       data_source_id: dataSourceId,
     },
     properties: {
-      名前: { title: [{ text: { content: `${today} モーニングジャーナル` } }] },
-      タグ: { multi_select: [{ name: "モーニングジャーナル" }] },
-      作成日時: { date: { start: new Date().toISOString() } },
-      ステータス: { status: { name: "完了" } },
+      名前: Title(`${today} モーニングジャーナル`),
+      タグ: MultiSelect("モーニングジャーナル"),
+      作成日時: DateProp(new Date().toISOString()),
+      ステータス: Status("完了"),
     },
     children: [
       heading2("モーニング・ジャーナル"),
@@ -61,10 +70,10 @@ export async function addNightJournal(
       data_source_id: dataSourceId,
     },
     properties: {
-      名前: { title: [{ text: { content: `${today} ナイトジャーナル` } }] },
-      タグ: { multi_select: [{ name: "ナイトジャーナル" }] },
-      作成日時: { date: { start: new Date().toISOString() } },
-      ステータス: { status: { name: "完了" } },
+      名前: Title(`${today} ナイトジャーナル`),
+      タグ: MultiSelect("ナイトジャーナル"),
+      作成日時: DateProp(new Date().toISOString()),
+      ステータス: Status("完了"),
     },
     children: [
       heading2("ナイト・ジャーナル"),

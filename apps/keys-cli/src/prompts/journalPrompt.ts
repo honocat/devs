@@ -156,5 +156,6 @@ export async function nightJournalPrompt(input: {
     todayTaskResult: answers.todayTaskResult,
     todayTaskRefrection: answers.todayTaskReflection,
     tomorrowTask: answers.tomorrowTask,
+    freeWriting: answers.freeWriting,
   };
 }

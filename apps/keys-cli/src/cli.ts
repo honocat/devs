@@ -4,6 +4,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { runMemo } from "./commands/memo.js";
 import { runMorningJournal, runNightJournal } from "./commands/journal.js";
+import { runWord } from "./commands/word.js";
 
 const program = new Command();
 
@@ -29,6 +30,12 @@ program
   .description("write night journal & add to Notion DB.")
   .action(runNightJournal);
 
+// word
+program
+  .command("word")
+  .alias("w")
+  .description("add page to Notion `Words` DB.")
+  .action(runWord);
 // word, goal,
 
 program.parseAsync().catch((error: unknown) => {
