@@ -1,0 +1,298 @@
+---
+title: '5. 統計的推定と仮説検定の基礎'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+**例題**：表が出る確率が0.5のコインを$N$回投げたところ、10回表が出た。コインを投げた回数$N$はいくつか？
+
+## 統計的仮説検定の基礎
+
+上で出された例題について、以下の2つの仮説を考える。
+
+- 仮説1：$N = 16$
+- 仮説2：$N = 36$
+
+### 仮説1（$N = 16$）が正しいと仮定する
+
+仮説1が正しいとすると、1回のコイン投げ実験は`rbiom(n = 1, size = 16, prob = 0.5)`で表されるはず。例題では、たまたま10回表が出たということになる。
+
+```{r}
+rbinom(n = 1, size = 16, prob = 0.5)
+```
+
+表は何回出ただろうか？
+
+結果を`result1`に保存しよう。
+
+```{r}
+result1 <- rbinom(n = 10000, size = 16, prob = 0.5)
+```
+
+まず、表が出る回数の平均値（mean）はいくらか。
+
+```{r}
+mean(result1)
+```
+
+理論値である$16 \cdot 0.5 = 8$に近い値である。分散（variance）と標準偏差（standard deviation）はいくつだろうか。
+
+```{r}
+var(result1)
+sd(result1)
+```
+
+分散の理論値は$16 \cdot 0.5 (1 - 0.5) = 4$、標準偏差の理論値は$\sqrt{4} = 2$なので、どちらもほぼ理論値通り。
+
+結果をヒストグラムにしてみる。
+
+```{r}
+df1 <- tibble(x = result1)
+hist1 <- ggplot(df1, aes(x = x, y = after_stat(density))) +
+  geom_histogram(color = 'black',
+                 fill  = 'skyblue',
+                 binwidth = 1) +
+  labs(x = '表が出た回数',
+       y = '確率密度',
+       title = '表が出る確率0.5のコインを16回投げる')
+plot(hist1)
+```
+
+例題で得られた「表が10回」という結果を図示してみる。
+
+```{r}
+hist2 <- hist1 +
+  geom_vline(xintercept = 10,
+             color      = 'tomato')
+plot(hist2)
+```
+
+このヒストグラムを見ると、なんとなく正規分布に見える。先程計算した平均値と標準偏差を利用して、平均`r mean(result1)`、標準偏差`r sd(result1)`の正規分布を重ねてみる。
+
+```{r}
+df2 <- tibble(x = seq(from = 0, 16, length.out = 1000)) |>
+  mutate(y = dnorm(x, mean = mean(result1), sd = sd(result1)))
+hist3 <- hist2 +
+  geom_line(data = df2, aes(x = x, y = y),
+            color = 'darkblue')
+plot(hist3)
+```
+
+この図からわかるように、二項分布から得られたヒストグラムの形は正規分布によく似ている（こういう状況を「正規分布で近似できる」という）。
+
+正規分布の特徴から、平均$\pm 2$標準偏差の間にデータの約95%があるはず。したがって仮説1（$N = 16$）が正しいとすれば、表が出る回数の95%は、
+
+```{r}
+mean(result1) - 2 * sd(result1)
+```
+
+と
+
+```{r}
+mean(result1) + 2 * sd(result1)
+```
+
+の間にあるはず。
+
+念の為、正規分布に頼らずに私たちの実験結果からも同じことを確かめる。私たちは実験を10,000回繰り返した。小さい順に並べる。
+
+```{r}
+result1_sorted <- sort(result1)
+```
+
+この並べ替えたデータのうち、小さい方から2.5%と大きい方から2.5%を取り除くと、平均に近い95%のデータを残すことができる。
+
+```{r}
+result1_sorted[251]
+```
+
+```{r}
+result1_sorted[9750]
+```
+
+つまりデータの95%は、`r result1_sorted[251]`と`r result1_sorted[9750]`の間にある。これは正規分布を利用して求めた値とほぼ同じである。
+
+```{r}
+quantile(result1, probs = c(0.025, 0.975))
+```
+
+いずれの方法を使っても、仮にコイン投げの回数が16回（仮説1）だとすれば、例題の観測値として得られた「10回」という回数は、平均周りの95%の範囲に含まれている。つまり、「16回コインを投げて10回表が出る」という現象は、特に珍しい訳では無い。よって、$N = 16$という**仮説を否定するような証拠はない**と考えられる。
+
+### 仮説2（$N = 36$）が正しいと仮定する
+
+仮説2が正しいとすると、
+
+```{r}
+rbinom(n = 1, size = 36, prob = 0.5)
+```
+
+である。表は何回出ただろうか？
+
+先ほどと同様に、`result2`に保存しよう。
+
+```{r}
+result2 <- rbinom(n = 10000, size = 36, prob = 0.5)
+```
+
+平均値は、
+
+```{r}
+mean(result2)
+```
+
+分散と標準偏差は、
+
+```{r}
+var(result2)
+sd(result2)
+```
+
+結果をヒストグラムにしてみる。
+
+```{r}
+df3 <- tibble(x = result2)
+hist4 <- ggplot(df3, aes(x = x, y = after_stat(density))) +
+  geom_histogram(color = 'black',
+                 fill  = 'skyblue',
+                 binwidth = 1) +
+  geom_vline(xintercept = 10,
+             color      = 'tomato') +
+  labs(x = '表が出た回数',
+       y = '確率密度',
+       title = '表が出る確率0.5のコインを36回投げる')
+plot(hist4)
+```
+
+正規分布で近似できそうなので、重ねて描いてみる。
+
+```{r}
+df4 <- tibble(x = seq(from = 0, to = 36, length.out = 1000)) |>
+  mutate(y = dnorm(x, mean = mean(result2), sd = sd(result2)))
+hist5 <- hist4 + geom_line(data = df4, aes(x = x, y = y), color = 'darkblue')
+plot(hist5)
+```
+
+正規分布で近似できそうなので、正規分布の特徴が当てはまる。したがって、仮説2が正しいとすれば、表が出る回数の95%は、
+
+```{r}
+mean(result2) - 2 * sd(result2)
+```
+
+と
+
+```{r}
+mean(result2) + 2 * sd(result2)
+```
+
+の間にあるはず。
+
+念の為、実験結果からも同じことを確かめる。
+
+```{r}
+quantile(result2, probs = c(0.025, 0.975))
+```
+
+いずれの方法を使っても、仮にコイン投げの回数が36回（仮説2）だとすれば、例題の観測値として得られた「10回」という回数は、平均周りの95%に含まれない。つまり、「36回コインを投げて10回表が出る」という現象は、とても珍しい現象であり、あまり起きることは期待されない。これは、$N = 36$という**仮説を否定するような証拠**と考えられるので、$N = 36$という**仮説は棄却**（reject）する。
+
+## 統計的推定の基礎
+
+仮説検定の方法を使えば、1つひとつの仮説について、その説がおかしいと言える証拠があるかどうか確かめることができる。しかし、理論的に可能な仮説はたくさんあり、すべてを確かめるのは面倒だ。
+
+そこで、そもそも$N$はいくつなのかということ自体を直接考えるのが、統計的推定（statistical estimation）だ。
+
+### 点推定（point estimation）
+
+二項分布では平均値が最も起こりやすいと考えられる。そうすると、表が出る確率0.5のコインを$N$回投げて10回表が出るのは、
+
+$$
+N \cdot 0.5 = 10
+$$
+
+この式を解いて、$N = 20$となる。つまり「試行回数20で成功確率0.5の二項分布の平均値が10である」ということがわかる。この平均値が私たちのデータと合致するので、私たちは「$N = 20$」と推定する。このようにして得られた、1つの数をピンポイントで示す推定法を点推定（point estimation）といい、得られた値を点推定値（point estimate）という。
+
+### 区間推定（interval estimation）
+
+上で1つの値を推定したが、その推定にどのくらい自信があるか（より正確には、どれくらい自信がないか）は問題によって違う。推定値が同じ10でも、「絶対10だ」「10かもしれない」というので答えの意味は異なる。そこで、この「推定に対する自信のなさ（uncertainty）」を推定の方法に取り込んだのが、**区間推定（interval estimation）**である。
+
+より具体的には、統計的仮説検定で棄却されない仮説の集合を、区間推定に使う。私たちは、$N = 36$という仮説を棄却した。したがって、$N = 36$は区間推定には使わない。他方、$N = 16$という仮説は棄却しなかったので、$N = 16$は区間推定の一部として使う。$N = 36$が仮説として妥当でないことがわかっているので、$N = 10, 11, \ldots, 35$について、仮説が棄却できるかどうか確かめれば良い。
+
+```{r}
+bin_exp <- function(h, trials = 10000) {
+  # h: 仮説（hypothesis）、N = h を検証する
+  # trials: 実験の繰り返し回数、既定値は10,000
+  
+  res <- rbinom(n = trials, size = h, prob = 0.5)
+  return(quantile(res, prob = c(0.025, 0.975)))
+}
+```
+
+これを使ってみる。
+
+```{r}
+bin_exp(16)
+```
+
+先ほどとほぼ同じ結果が得られた。データである10はこの2つの数値の間にあるので、仮説1は保留する。
+
+同様に、仮説2（$N = 36$）は、
+
+```{r}
+bin_exp(36)
+```
+
+となり、棄却される。
+
+1つ1つの値を順番に検証してもいいが、一気に実行するには次のようにする。
+
+```{r}
+set.seed(2025-12-18)
+x <- 10 : 35
+names(x) <- 10 : 35
+sapply(x, bin_exp)
+```
+
+`for`ループを使ってもいい。
+
+```{r}
+set.seed(2025-12-18)
+for (x in 10:35) {
+  res <- bin_exp(x)
+  cat(x, ':', res, '\n')
+}
+```
+
+$N$が10から12の間と、32以上の場合にはデータである10が2つの数値の間にないことがわかるので、これらの仮説は棄却する。よって、「$N$は13以上31以下の整数である」と答えるのが区間推定である。
+

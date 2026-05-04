@@ -1,0 +1,63 @@
+---
+title: "統計学1のQuartoサンプル"
+subtitle: "Renderできるかな？"
+author: "矢内　勇生"
+date: "`r Sys.Date()`"
+execute: 
+  echo: true
+  warning: false
+  message: true
+format: 
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle 
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+## PDF に出力する際は cairo を使用する
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = "cairo_pdf")
+}
+```
+
+
+Render ボタンでPDFを作成したいんです。お願いします。
+
+```{r}
+#| echo: false
+#| message: false
+## tidyverse の読込
+library(tidyverse)
+## 図のなかで日本語を使えるようにする
+## 大学PCを利用：Windows を想定
+## フォントの設定はお好みで
+## （Unix/Linux ではIPAexフォントのインストールが必要かも）
+#my_font <- "Japan1" # Windows用
+#library(fontregisterer)
+#my_font <- "Yu Gothic" # Windows用 (fontregisterer が使える場合)
+my_font <- "HiraginoSans-W3" # macOSの場合
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+
+# Quarto を使ってみよう！
+
+文章は普通に書く。節（小節, etc.）タイトル以外に `#` 記号はいらない。
+
+```{r}
+myd <- tibble(x = rnorm(100))
+p <- ggplot(myd, aes(x = x)) +
+  geom_histogram(color = "black", binwidth = 0.2) +
+  labs(y = "度数", title = "xのヒストグラム")
+plot(p)
+```
+
+ヒストグラムができる。軸ラベルの日本語が正しく表示されているか要確認。

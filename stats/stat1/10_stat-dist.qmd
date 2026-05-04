@@ -1,0 +1,272 @@
+---
+title: '10. 確率分布の代表値lib'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+# 離散型分布の例
+
+## ベルヌーイ分布
+
+確率変数$X$が、
+
+$$
+X \sim \text{Bernoulli} (\theta)
+$$
+
+であるとする。
+
+$\theta = 0.7$の場合について、確率変数$X$の値を無作為に1,000個生成してみる。
+
+```{r}
+x_1 <- rbinom(n = 1000, size = 1, prob = 0.7)
+p_x1 <- tibble(x = x_1) |>
+  ggplot(aes(x = x, y = after_stat(count) / 1000)) +
+  geom_bar(color = 'black',
+           width = 0.5) +
+  labs(y = '確率') +
+  scale_x_continuous(breaks = 0 : 1,
+                     minor_break = NULL) +
+  ylim(0, 1)
+plot(p_x1)
+```
+
+$x$の値は0と1の2種類だけで、$Pr (X = 1) \approx 0.7$（確率変数$X$が1となる確率）となっていることがわかる。
+
+$x_1$の平均値を計算してみると、
+
+```{r}
+mean(x_1)
+```
+
+ベルヌーイ分布の分散は$\theta (1 - \theta)$なので、$\theta = 0.7$の場合は$\mathbb{V} [X] = 0.7 (1 - 0.7) = 0.21$である。
+
+```{r}
+var(x_1)
+```
+
+近い値である。
+
+## 二項分布
+
+確率変数$X$が、
+
+$$
+X \sim \text{Bernoulli} (n, \theta)
+$$
+
+だとする。
+
+$n = 5, \theta = 0.7$の場合について、確率変数$X$の値を無策に1,000個生成してみる。
+
+```{r}
+x_2 <- rbinom(n = 1000, size = 5, prob = 0.7)
+p_x2 <- tibble(x = x_2) |>
+  ggplot(aes(x = x, y = after_stat(count) / 1000)) +
+  geom_bar(color = 'black',
+           width = 0.5) +
+  labs(y = '確率') +
+  scale_x_continuous(breaks = 0 : 5,
+                     minor_breaks = NULL) +
+  ylim(0, 0.5)
+plot(p_x2)
+```
+
+$x$の値は0から5までの整数で、$X = 4$の確率が最も大きく、$X = 0$の確率が（台の中では）最も小さいことがわかる。
+
+$x_2$の平均は、
+
+```{r}
+mean(x_2)
+```
+
+期待値である$n \theta = 5 \cdot 0.7 = 0.35$には一致していないものの、ある程度近い値を取っている。
+
+二項分布の分散は$n \theta (1 - \theta) = 5 \cdot 0.7 (1 - 0.7) = 1.05$である。
+
+```{r}
+var(x_2)
+```
+
+# 連続型分布の例
+
+## 正規分布
+
+確率変数$X$が、
+
+$$
+X \sim \text{Normal} (\mu, \sigma)
+$$
+
+であるとする。
+
+$\mu = 5, \sigma = 3$の場合について、確率変数$X$の値を無作為に1,000個生成してみる。
+
+```{r}
+x_3 <- rnorm(1000, mean = 5, sd = 3)
+p_x3 <- tibble(x = x_3) |>
+  ggplot(aes(x = x, y = after_stat(density))) +
+  geom_histogram(color = 'black') +
+  labs(y = '確率密度')
+plot(p_x3)
+```
+
+ヒストグラムの概形を見ると、山が一つで、平均値を中心として左右対称になるという正規分布の特徴が見て取れる。
+
+平均が5、標準偏差が3の確率密度曲線を重ねてみる。
+
+```{r}
+p_x3_b <- p_x3 +
+  stat_function(fun         = dnorm,
+                geom        = 'line',
+                color       = 'dodgerblue',
+                args        = list(mean = 5, sd = 3),
+                inherit.aes = FALSE)
+plot(p_x3_b)
+```
+
+平均値は、
+
+```{r}
+mean(x_3)
+```
+
+標準偏差は、
+
+```{r}
+sd(x_3)
+```
+
+得られた値のうち、「平均$\pm 1$標準偏差」「平均$\pm 2$標準偏差」の範囲に収まっている観測値の数を数える。ただし、得られた値の平均値と標準偏差ではなく、分布の平均と標準偏差を用いる。まず、「平均$\pm 1$標準偏差」の範囲にある値は、
+
+```{r}
+sum(x_3 > 5 - 3 & x_3 < 5 + 3)
+```
+
+である。1,000個中`r sum(x_3 > 5 - 3 & x_3 < 5 + 3)`個の値が「平均$\pm 1$標準偏差」お範囲にある。つまり、データの約`r sum(x_3 > 5 - 3 & x_3 < 5 + 3) / 10`%が収まっている。理論的には、この範囲に収まる確率は、
+
+```{r}
+pnorm(5 + 3, mean = 5, sd = 3) - pnorm(5 - 3, mean = 5, sd = 3)
+```
+
+になるはずである。
+
+同様に、「平均$\pm 2$標準偏差」の範囲にある個数は、
+
+```{r}
+sum(x_3 > 5 - 2 * 3 & x_3 < 5 + 2 * 3)
+```
+
+である。1,000個中`r sum(x_3 > 5 - 2 * 3 & x_3 < 5 + 2 * 3)`個の値が「平均$\pm 2$標準偏差」の範囲にある。つまり、データの約`r sum(x_3 > 5 - 2 * 3 & x_3 < 5 + 2 * 3) / 10`が収まっている。この範囲に収まる確率は、
+
+```{r}
+pnorm(5 + 2 * 3, mean = 5, sd = 3) - pnorm(5 - 2 * 3, mean = 5, sd = 3)
+```
+
+になるはずである。
+
+## 標準正規分布
+
+確率変数$X$が、
+
+$$
+X \sim \text{Normal} (0, 1)
+$$
+
+であるとする。この条件で、確率変数$X$の値を無策に1,000個生成してみる。
+
+```{r}
+x_4 <- rnorm(1000, mean = 0, sd = 1)
+p_x4 <- tibble(x = x_4) |>
+  ggplot(aes(x = x, y = after_stat(density))) +
+  geom_histogram(color = 'black') +
+  labs(y = '確率密度')
+plot(p_x4)
+```
+
+ヒストグラムの概形を見ると、山が一つで、平均値を中心として左右対称になるという正規分布の特徴が見て取れる。
+
+上のヒストグラムに標準正規分布の確率密度曲線を重ねてみる。
+
+```{r}
+p_x4_b <- p_x4 +
+  stat_function(fun         = dnorm,
+                geom        = 'line',
+                color       = '#FF2400',
+                args        = list(mean = 0, sd = 1),
+                inherit.aes = FALSE)
+plot(p_x4_b)
+```
+
+平均値は、
+
+```{r}
+mean(x_4)
+```
+
+標準偏差は、
+
+```{r}
+sd(x_4)
+```
+
+得られた値のうち、「平均$\pm 1$標準偏差」「平均$\pm 2$標準偏差」の範囲に収まっている観測値の数を数えてみる。まず「平均$\pm 1$標準偏差」すなわち$-1 < X < 1$の範囲にある個数は、
+
+```{r}
+sum(-1 < x_4 & x_4 < 1)
+```
+
+である。つまりデータの約`r sum(-1 < x_4 & x_4 < 1) / 10`%が収まっている。理論的には、この範囲に収まる確率は、
+
+```{r}
+pnorm(1, mean = 0, sd = 1) - pnorm(-1, mean = 0, sd = 1)
+```
+
+になるはずである。
+
+同様に「平均$\pm 2$標準偏差」、すなわち$-2 < X < 2$の範囲にある個数は、
+
+```{r}
+sum(-2 < x_4 & x_4 < 2)
+```
+
+である。データの約`r sum(-2 < x_4 & x_4 < 2) / 10`%が収まっている。理論的には、
+
+```{r}
+pnorm(2, mean = 0, sd = 1) - pnorm(-2, mean = 0, sd = 1)
+```
+
+になるはず。

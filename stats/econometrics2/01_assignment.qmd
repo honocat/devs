@@ -1,0 +1,98 @@
+---
+title: '軽量経済学応用'
+subtitle: '課題1'
+author: 'honocat'
+date: 'today'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+データセットの作成。
+
+```{r}
+set.seed(2026-1-2)
+N <- 100
+x <- rnorm(N, mean = 0, sd = 1)
+y <- 0.7 * x + rnorm(N, mean = 0, sd = 2)
+myd <- tibble(x = x, y = y)
+```
+
+データの内容の確認。
+
+```{r}
+head(myd, n = 6)
+tail(myd, n = 9)
+```
+
+基本的な統計量。
+
+```{r}
+mean(myd$x)
+mean(myd$y)
+median(myd$x)
+median(myd$y)
+var(myd$x)
+var(myd$x)
+sd(myd$x)
+sd(myd$y)
+```
+
+ヒストグラム。
+
+```{r}
+pltx <- ggplot(myd,
+              aes(x = x,
+                  y = after_stat(density))) +
+  geom_histogram(color = 'black') +
+  labs(x = expression(x), y = '確率密度')
+plot(pltx)
+plty <- ggplot(myd,
+               aes(x = y,
+                   y = after_stat(density))) +
+  geom_histogram(color = 'black') +
+  labs(x = expression(y), y = '確率密度')
+plot(plty)
+```
+
+散布図と相関係数。
+
+```{r}
+scat <- ggplot(myd,
+               aes(x = x,
+                   y = y)) +
+  geom_point() +
+  labs(x = 'x', y = 'y')
+plot(scat)
+cor(myd$x, myd$y)
+```
+

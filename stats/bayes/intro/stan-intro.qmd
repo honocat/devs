@@ -1,0 +1,390 @@
+---
+title: 'Introduce of Stan'
+subtitle: ''
+author: 'honocat'
+date: 'today'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+pacman::p_load(tidyverse, cmdstanr, posterior)
+options(mc.cores = parallel::detectCores())
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+## 問題1
+
+あるコインをトスしたときに表が出る確率$\theta$を知りたい。データとして、このコインを$n$回トスし、表が出た回数$y$を記録することにする。
+
+### 統計モデル
+
+表が出る確率$\theta$のコインを$n$回トスしたときに表がでる確率の分布は、試行回数$n$、成功確率$\theta$の二項分布に従う。よって、その尤度は、
+
+$$
+Y \sim \text{Binomial} (n, \theta)
+$$
+
+と表される。
+
+ここで、私たちは$\theta$について知りたいので、$\theta$についての事前分布を考える。$\theta$は確率なので、$[0, 1]$の範囲に収まるようにしたい。そこで、$\theta$はベータ分布に従うと仮定する。
+
+$$
+\theta \sim \text{Beta} (\alpha, \beta)
+$$
+
+データを見る前に$\theta$についてどのように考えているかについて、以下の3つのパタンを考えよう。
+
+1. どんな確率（$\theta$）も同じくらいありそうだと考えている（または何も考えていない）場合
+1. コインは「公正」であり、おそらく$\theta = 0.5$だろうと考えている場合
+1. コインは「イカサマ用」であり、表か裏かのどちらか一方が出やすくなっているはずだと考えている場合
+
+#### パタン1: コインに対する強い信念がない場合
+
+データを見る前はコインに対する強い信念がなく、どのような確率も同じくらいありそうだと思っているとしよう。そのような信念を反映した事前分布として、
+
+$$
+\theta \sim \text{Beta} (1, 1)
+$$
+
+を仮定する。この事前分布を可視化する。
+
+```{r}
+#| echo: false
+
+pri <- tibble(theta = seq(0, 1, length.out = 1000)) |>
+  mutate(pri1 = dbeta(theta, shape1 = 1, shape2 = 1))
+pri_dist1 <- ggplot(pri, aes(x = theta, y = pri1)) +
+  geom_hline(yintercept = 0,
+             color      = 'gray') +
+  geom_line() +
+  labs(x = expression(theta),
+       y = expression(p (theta)),
+       title = 'パタン1の事前分布')
+plot(pri_dist1)
+```
+
+これは$\text{Uniform} (0, 1)$と同じであることがわかる。このとき、統計モデルは以下のようにまとめられる。
+
+$$
+\begin{aligned}
+  Y      & \sim \text{Binomial} (n, \theta) \\
+  \theta & \sim \text{Beta} (1, 1)
+\end{aligned}
+$$
+
+#### パタン2: コインは公正だという信念がある場合
+
+データを見る前にはコインは公正だろうという信念があり、$\theta$は0.5付近にある可能性が高いと思っているとしよう。そのような信念を反映した事前分布として、
+
+$$
+\theta \sim \text{Beta} (10, 10)
+$$
+
+を仮定する。この事前分布を可視化する。
+
+```{r}
+#| echo: false
+
+pri <- pri |>
+  mutate(pri2 = dbeta(theta, shape1 = 10, shape2 = 10))
+pri_dist2 <- ggplot(pri, aes(x = theta, y = pri2)) +
+  geom_hline(yintercept = 0,
+             color      = 'gray') +
+  geom_line() +
+  labs(x = expression(theta),
+       y = expression(p (theta)),
+       title = 'パタン2の事前分布')
+plot(pri_dist2)
+```
+
+$\theta = 0.5$付近の可能性は高いが、$\theta = 0$や$\theta = 1$の可能性はほぼゼロであるという信念が反映されている。このとき、統計モデルは以下のようにまとめられる。
+
+$$
+\begin{aligned}
+  Y      & \sim \text{Binomial} (n, \theta) \\
+  \theta & \sim \text{Beta} (10, 10)
+\end{aligned}
+$$
+
+#### パタン3: コインは不正だという信念がある場合
+
+データを見る前にはコインは不公正だろうという信念があり、$\theta$は0付近または1付近にある可能性が高いと思っているとしよう。そのような信念を反映した事前分布として、
+
+$$
+\theta \sim \text{Beta} (0.1, 0.1)
+$$
+
+を仮定する。この事前分布を可視化する。
+
+```{r}
+#| echo: false
+
+pri <- pri |>
+  mutate(pri3 = dbeta(theta, shape1 = 0.1, shape2 = 0.1))
+pri_dist3 <- ggplot(pri, aes(x = theta, y = pri3)) +
+  geom_hline(yintercept = 0,
+             color      = 'gray') +
+  geom_line() +
+  labs(x = expression(theta),
+       y = expression(p (theta)),
+       title = 'パタン3の事前分布')
+plot(pri_dist3)
+```
+
+$\theta = 0$や$\theta = 1$付近の可能性が非常に高いが、その他の可能性はほぼゼロであるという信念が反映されている。このとき、統計モデルは以下のようにまとめられる。
+
+$$
+\begin{aligned}
+  Y      & \sim \text{Binomial} (n, \theta) \\
+  \theta & \sim \text{Beta} (0.1, 0.1)
+\end{aligned}
+$$
+
+### 統計モデルをStanで記述する
+
+事前分布のパラメタを`alpha`, `beta`とすると、上の統計モデルはStanでは次のように書ける。
+
+```
+model {
+  y ~ binomial(n, theta);
+  theta ~ beta(alpha, beta);
+}
+```
+
+このように、Stanでは`model{}`ブロックの中にモデルを記述する。モデルブロックの中身は上でカイた統計モデルをほぼそのまま書き写しただけだということに気づくだろう。
+
+実際にStanでモデルを書く場合には、`data{}`ブロックと`parameters{}`ブロックも必要であり、`data{}`, `model{}`, `parameters{}`の順に書く。これら3つのブロックの他に、目的に応じて`transformed parameters{}`ブロックや`generated quantities{}`ブロックなどを加える場合もある。
+
+以下のコードでモデルをコンパイルする。
+
+```{r}
+beta_binom <- cmdstan_model('stan-intro.stan')
+```
+
+::: {.callout-note}
+## Stanコード
+
+```{r}
+#| echo: false
+
+beta_binom$print()
+```
+
+:::
+
+### データ（シミュレーション）
+
+$\theta = 0.45$の場合と$\theta = 0.8$の場合について、$n = 10$のデータと$n = 100$のデータを作る。つまり、4つのシミュレーションデータを用意する。$Y$の代わりに$X_i \sim \text{Bernoulli} (\theta)$を記録し、$\sum_{i=1}^{n} X_i = Y$とする。
+
+```{r}
+set.seed(011011)
+x1 <- rbinom(10,  size = 1, prob = 0.45)
+x2 <- rbinom(100, size = 1, prob = 0.45)
+x3 <- rbinom(10,  size = 1, prob = 0.8)
+x4 <- rbinom(100, size = 1, prob = 0.8)
+```
+
+それぞれの平均値は、
+
+```{r}
+list(x1, x2, x3, x4) |>
+  map(.f = mean)
+```
+
+である。このデータをStanにわたすために、データのリストを作る。ここでいう「データ」は必ずしも観測された値だけではない。例えば、今回の問題では事前分布を決める`alpha`, `beta`も「データ」として与える。
+
+今回は、4種類の$y$と3パタンの事前分布があるので、全部で12個のデータリストを作る。
+
+観測されたのが`y1`の場合。
+
+```{r}
+d1_p1 <- list(n     = length(x1),
+              y     = sum(x1),
+              alpha = 1,
+              beta  = 1)
+d1_p2 <- list(n     = length(x1),
+              y     = sum(x1),
+              alpha = 10,
+              beta  = 10)
+d1_p3 <- list(n     = length(x1),
+              y     = sum(x1),
+              alpha = .1,
+              beta  = .1)
+```
+
+観測されたのが`y2`の場合。
+
+```{r}
+d2_p1 <- list(n     = length(x2),
+              y     = sum(x2),
+              alpha = 1,
+              beta  = 1)
+d2_p2 <- list(n     = length(x2),
+              y     = sum(x2),
+              alpha = 10,
+              beta  = 10)
+d2_p3 <- list(n     = length(x2),
+              y     = sum(x2),
+              alpha = .1,
+              beta  = .1)
+```
+
+観測されたのが`y3`の場合。
+
+```{r}
+d3_p1 <- list(n     = length(x3),
+              y     = sum(x3),
+              alpha = 1,
+              beta  = 1)
+d3_p2 <- list(n     = length(x3),
+              y     = sum(x3),
+              alpha = 10,
+              beta  = 10)
+d3_p3 <- list(n     = length(x3),
+              y     = sum(x3),
+              alpha = .1,
+              beta  = .1)
+```
+
+観測されたのが`y4`の場合。
+
+```{r}
+d4_p1 <- list(n     = length(x4),
+              y     = sum(x4),
+              alpha = 1,
+              beta  = 1)
+d4_p2 <- list(n     = length(x4),
+              y     = sum(x4),
+              alpha = 10,
+              beta  = 10)
+d4_p3 <- list(n     = length(x4),
+              y     = sum(x4),
+              alpha = .1,
+              beta  = .1)
+```
+
+### Stanによる推定
+
+#### `y1`が観測された場合
+
+Stanで推定を行う。パラメタの事前分布をMCMCでサンプリングするため、`$sample`を次のように使う。
+
+```{r}
+#| results: hide
+
+fit1_p1 <- beta_binom$sample(
+  data          = d1_p1,
+  seed          = 011011,
+  chains        = 4,
+  refresh       = 1000,
+  iter_warmup   = 1000,
+  iter_sampling = 3000
+)
+```
+
+結果の概要は`$summary()`で確認できる。
+
+```{r}
+fit1_p1$summary()
+```
+
+```{r}
+#| echo: false
+
+fit1_p1_mean <- fit1_p1$summary()[2, 2] |> round(2)
+fit1_p1_med <- fit1_p1$summary()[2, 3] |> round(2)
+fit1_p1_sd <- fit1_p1$summary()[2, 4] |> round(2)
+fit1_p1_q5 <- fit1_p1$summary()[2, 6] |> round(2)
+fit1_p1_q95 <- fit1_p1$summary()[2, 7] |> round(2)
+```
+
+
+$\theta$の事後平均が`r fit1_p1_mean`、事後中央値が`r fit1_p1_med`、事後標準偏差が`r fit1_p1_sd`であることがわかる。$\theta$の90%信用区間は、$[$`r fit1_p1_q5`, `r fit1_p1_q95`$]$である。`rhat`がほぼ1であり、分布が収束していないという証拠は無さそうである。
+
+この分析では、4つの異なるチェイン（chain）からそれぞれ3,000個の$\theta$の値をサンプリングしたので、全部で12,000個の乱数が得られているはずである。これは次のようにして取り出せる。
+
+```{r}
+post1_p1 <- fit1_p1$draws() |>
+  as_draws_df()
+glimpse(post1_p1)
+```
+
+このように、事後分布から取り出した乱数をデータフレームに格納することができる。
+
+分布が収束しているか視覚的に確認するために、トレースプロットを描く。
+
+```{r}
+trace1_p1 <- ggplot(post1_p1,
+                    aes(x = .iteration,
+                        y = theta,
+                        group = as.factor(.chain))) +
+  geom_line(aes(color = as.factor(.chain)))
+plot(trace1_p1)
+```
+
+4つのチェインが同じような範囲でばらついており、分布が収束していないという証拠は見つけられない。
+
+$\theta$の事後分布を確認しよう。
+
+```{r}
+plt1_p1 <- ggplot(post1_p1,
+                  aes(x = theta,
+                      y = after_stat(density))) +
+  geom_histogram(color = 'black') +
+  xlim(0, 1) +
+  labs(x = expression(theta),
+       y = '事後確率密度',
+       title = 'y1: パタン1')
+plot(plt1_p1)
+```
+
+このサンプルを使って、事後平均などを計算することができる。
+
+```{r}
+mean(post1_p1$theta)
+median(post1_p1$theta)
+sd(post1_p1$theta)
+```
+
+これらの値は、`$summary()`の結果と同じであることが確認できる。
+
+90%信用区間と95%信用区間を求める。求めると言っても、得られたMCMCサンプルの分位点を見つけるだけなので`quantile()`を使えばよい。
+
+```{r}
+quantile(post1_p1$theta, probs = c(0.05, 0.95))
+quantile(post1_p1$theta, probs = c(0.025, 0.975))
+```
+
+このサンプルを使うと、他にも様々な計算を行うことができる。例えば、$\theta$が0.4から0.6の間の値を取る確率は、
+
+```{r}
+mean(post1_p1$theta > 0.4 & post1_p1$theta < 0.6)
+```
+
+となり、約`r mean(post1_p1$theta > 0.4 & post1_p1$theta < 0.6) |> round(2)`%であることがわかる。

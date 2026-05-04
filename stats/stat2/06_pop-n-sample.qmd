@@ -1,0 +1,132 @@
+---
+title: '6. 母集団と標本をシミュレーションで理解する'
+subtitle: ''
+author: 'honocat'
+date: '`r Sys.Date()`'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+library(tidyverse)
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+## 母集団と標本のシミュレーション
+
+### 母集団を用意する
+
+例として、女性4,600人、男性5,400人から成る母集団を考える。合計10,000人で、女性比率が0.46、男性比率は0.54である。これらは母集団の比率なので、母比率と呼ばれる。
+
+この母集団（population）をRで定義する。
+
+```{r}
+pop <- rep(c('female', 'male'), c(4600, 5400))
+length(pop) # 総人口
+table(pop) # 男女の数
+```
+
+ここで、私たちは母比率を知らないと仮定する。正しい母比率を調べるもっとも単純な方法は、1万人全員の性別を調べることである。しかし、1万人を調査するのは大変なので、1万人から100人だけを無作為（ランダム）に選び、100人の性別を調べ、その結果を利用して母比率を推定することにする。
+
+### 母集団から100人をランダムに選ぶ
+
+母集団から、ランダムに100人を抜き出してみる。`sample()`を使う。
+
+```{r}
+N <- 100
+sample_1 <- sample(pop, size = N, replace = FALSE)
+table(sample_1) / N
+```
+
+この比率は標本（サンプル）の比率なので、標本比率と呼ばれる。もう一度調べてみる。
+
+```{r}
+sample_2 <- sample(pop, size = N, replace = FALSE)
+mean(sample_2 == 'female')
+```
+
+もう一度。
+
+```{r}
+sample_3 <- sample(pop, size = N, replace = FALSE)
+mean(sample_3 == 'female')
+```
+
+1万人から100人を選ぶ方法は$6.5 \times 10 ^{241}$通りあるので、すべての組み合わせを調べるのは不可能。Rを使って10,000通りだけ調べる。
+
+```{r}
+res_1 <- rep(NA, 1e4)
+for (i in 1 : 1e4) {
+  x <- sample(pop, size = N, replace = FALSE)
+  res_1[i] <- mean(x == 'female')
+}
+```
+
+結果をヒストグラムにしてみる。私たちは母比率を知っているので、母比率である0.46を赤い線で示す。
+
+```{r}
+df1 <- tibble(sample = res_1)
+hist1 <- ggplot(df1, aes(x = sample)) +
+  geom_histogram(binwidth = 0.02,
+                 color    = 'black',
+                 fill     = 'dodgerblue') +
+  geom_vline(xintercept = 0.46,
+             color      = 'red',
+             linewidth  = 1.5) +
+  labs(x = '女性の標本比率',
+       y = '度数')
+plot(hist1)
+```
+
+ヒストグラムを見ると、一つ一つの標本比率は母比率よりも大きかったり、母比率よりも小さかったりする。しかし、**平均すると**母比率に近い値をえることができそう。
+
+このヒストグラムから分かる通り、統計量は分布する（つまり、標本ごとにばらばらの値を取る）。このような標本ごとの分布を**標本分布（sampling distribution）**と呼ぶ。
+
+### 標準誤差（standard error; SE）
+
+標本分布に現れる標準偏差（統計量のばらつき）を標準誤差という。このシミュレーションで得られる標準誤差は、
+
+```{r}
+sd(res_1)
+```
+
+である。理論的には、
+
+$$
+\text{SE} = \frac{ \text{母標準偏差} }{ \sqrt{ \text{標本サイズ} } }
+$$
+
+なので、
+
+```{r}
+pi <- 0.46
+pop_sd <- sqrt(pi * (1 - pi))
+pop_sd / sqrt(100)
+```
+
+になるはずであるが、シミュレーションなので理論値に近づいたり離れたりする。
