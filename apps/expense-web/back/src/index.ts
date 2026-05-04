@@ -17,7 +17,7 @@ const app = new Hono<{ Bindings: Bindings }>();
 app.use(
   "*",
   cors({
-    origin: "https://honocat.github.io",
+    origin: "https://devs-2kv.pages.dev",
     allowMethods: ["GET"],
     allowHeaders: ["Content-Type"],
   }),
