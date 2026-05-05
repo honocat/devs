@@ -68,3 +68,4 @@ lerna-debug.log*
 .Rproj.user
 
 **/*.quarto_ipynb
+.positai

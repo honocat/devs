@@ -1,0 +1,84 @@
+---
+title: 'ベイズ統計学'
+subtitle: '02 確率の基礎'
+author: 'honocat'
+date: 'today'
+execute:
+  echo: true
+  warning: false
+  message: true
+format:
+  pdf:
+    fig-width: 5
+    fig-height: 3
+  html:
+    fig-width: 5
+    fig-height: 3
+pdf-engine: lualatex
+documentclass: ltjsarticle
+lang: ja
+---
+
+```{r global_option}
+#| include: false
+
+if (knitr::is_latex_output()) {
+  knitr::opts_chunk$set(dev = 'cairo_pdf')
+}
+```
+
+```{r}
+#| echo: false
+#| message:  false
+
+pacman::p_load(tidyverse, cmdstanr, posterior)
+options(mc.cores = parallel::detectCores())
+my_font <- 'HiraginoSans-W3'
+theme_set(theme_gray(base_size = 9,
+                     base_family = my_font))
+```
+
+## 確率とは
+
+事象の不確かさを表すための道具。どのように確率を表すか？
+
+**ラプラスの定義**
+
+$$
+\text{着目事象の確率} = \frac{\text{着目事象の数}}{\text{全事象の数}}
+$$
+
+着目事象の確率と非着目事象の確率を足すと1となる。
+
+**頻度論の定義**
+
+$$
+\begin{aligned}
+  & \text{ある事象の確率} = \lim_{n\to \infty} \frac{n_a}{n} \\
+  & n_a: \text{ある事象が起こった回数} \\
+  & n: \text{試行回数}
+\end{aligned}
+$$
+
+試行回数を無限にすると、真の確率となる。
+
+**コルモゴロフの確率の公理**
+
+1. 確率は非負で1以下 $0 \le p(x) \le 1$
+2. 全事象の確率を足し合わせると1 $\sum_{x} p(x) = 1, \int_{-\infty}^{\infty} p(x) dx = 1$
+3. 確率は足し算できる $p(A \cup B) = p(A) + p(B)$（AとBは排反; 同時には起こらない）
+
+## 確率の基礎
+
+例：サイコロで3が出る確率 $p(X = 3) = \frac{1}{6}$
+
+- $X$: 確率変数
+- $3$: 事象
+
+**確率分布**：確率変数の確率の分布
+
+- 離散的な変数の場合、確率質量関数PMF（probability mass function）$p(X = x) = \frac{1}{6}$
+- 連続的な変数の場合、確率密度関数PDF（probability density function）$p(a \le X \le b) = \int_{a}^{b} p(x) dx$
+
+
+
