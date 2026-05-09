@@ -90,9 +90,7 @@ async function fetchData(token: string, owner: string, repo: string) {
 
   return await Promise.all(
     mdFiles.map(async (file: any) => {
-      console.log("ok");
       const text = await fetch(file.download_url).then((r) => r.text());
-      console.log(text);
       return parseWord(text, file.name);
     }),
   );
