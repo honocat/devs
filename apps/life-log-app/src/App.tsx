@@ -9,12 +9,12 @@ export function App() {
     <Container>
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>Life Logs</CardTitle>
+          <CardTitle className="text-bold">ライフログアプリ</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-2">
-          <LinkButton to="/expenses" text="Expenses" />
-          <LinkButton to="/words" text="Words" />
-          <LinkButton to="/" text="Coming soon..." className="col-span-2" />
+          <LinkButton to="/expenses" text="家計簿" />
+          <LinkButton to="/words" text="語句" />
+          <LinkButton to="/" text="開発中..." className="col-span-2" />
         </CardContent>
       </Card>
     </Container>

@@ -21,7 +21,7 @@ export default function WeeklyChart(props: Props) {
   return (
     <Card className="w-full">
       <CardContent className="space-y-3 p-4">
-        <h2 className="text-sm font-semibold">Weekly Chart</h2>
+        <h2 className="text-sm font-semibold">曜日別出費額</h2>
         <div className="h-32 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>

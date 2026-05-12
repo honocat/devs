@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 
-import { formatDate } from "@/pages/expenses/utils/date"
+import { formatYear } from "@/pages/expenses/utils/date"
 import type { Expense } from "@/pages/expenses/utils/types"
 
 interface Props {
@@ -14,7 +14,7 @@ export default function ExpenseDetail(props: Props) {
     <Card className="w-full">
       <CardContent className="space-y-3 p-4">
         <h2 className="text-sm font-semibold">
-          Detail of {formatDate(selected)}
+          {formatYear(selected)}年{selected.getMonth() + 1}月{selected.getDate()}日 出費詳細
         </h2>
         {data.length > 0 ? (
           <ul className="space-y-1">

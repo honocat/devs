@@ -1,4 +1,5 @@
 import type { DateRange } from "react-day-picker"
+import { ja } from 'date-fns/locale'
 
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { Card, CardContent } from "@/components/ui/card"
@@ -28,6 +29,7 @@ export default function ExpenseCalendar(props: Props) {
           onMonthChange={(month) => onMonthChange(month)}
           numberOfMonths={1}
           captionLayout="dropdown"
+          locale={ja}
           className="w-full max-w-full [--cell-size:clamp(2rem,11vw,3rem)] sm:[--cell-size:--spacing(12)]"
           components={{
             DayButton: ({ children, day, ...props }) => {

@@ -10,7 +10,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 
 import type { Monthly } from "@/pages/expenses/utils/types"
-import { formatYear, formatMonth } from "@/pages/expenses/utils/date"
+import { formatYear } from "@/pages/expenses/utils/date"
 
 interface Props {
   data: Monthly[]
@@ -24,7 +24,7 @@ export default function MonthlyChart(props: Props) {
     <Card className="w-full">
       <CardContent className="space-y-3 p-4">
         <h2 className="text-sm font-semibold">
-          Monthly Chart ( {formatYear(month)}-{formatMonth(month)} )
+          月次累計出費額 ({formatYear(month)}年{month.getMonth() + 1}月)
         </h2>
         <div className="h-32 w-full">
           <ResponsiveContainer width="100%" height="100%">

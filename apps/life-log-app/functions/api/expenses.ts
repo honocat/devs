@@ -43,7 +43,7 @@ function getWeeklyData(data: Expense[], day: string) {
   const base = new Date(day)
   base.setDate(base.getDate() - base.getDay())
 
-  const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+  const days = ["日", "月", "火", "水", "木", "金", "土"]
   const map = new Map<string, number>()
   for (const d of days) map.set(d, 0)
 
