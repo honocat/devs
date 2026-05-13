@@ -1,7 +1,5 @@
+import { Container } from "@/components/layouts/Container"
+
 export default function WordsPage() {
-    return (
-        <div>
-            Hello from words page
-        </div>
-    )
+  return <Container>Under development...</Container>
 }

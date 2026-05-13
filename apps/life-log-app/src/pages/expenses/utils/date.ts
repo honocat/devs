@@ -9,3 +9,7 @@ export function formatDate(date: Date) {
 export function formatMonth(date: Date) {
   return format(date, "MM")
 }
+
+export function getMonthKey(date: Date) {
+  return `${formatYear(date)}-${formatMonth(date)}`
+}

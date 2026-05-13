@@ -1,0 +1,4 @@
+name = "life-log-app"
+compatibility_date = "2026-05-13"
+
+pages_build_output_dir = "./dist"

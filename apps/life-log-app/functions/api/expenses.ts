@@ -1,3 +1,11 @@
+import {
+  endOfMonth,
+  endOfWeek,
+  format,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns"
+
 import { fetchRepoFile } from "../_lib/github"
 import { json } from "../_lib/json"
 import { parseCSV } from "../_lib/parser"
@@ -26,63 +34,6 @@ function getTargetMonths(year: number, month: number) {
   return [format(prev), format(base), format(next)]
 }
 
-// calendar
-function getDailyTotals(data: Expense[]) {
-  const map: Record<string, number> = {}
-  for (const row of data) map[row.date] = (map[row.date] ?? 0) + row.amount
-  return map
-}
-// detail
-function getDetail(data: Expense[], day: string) {
-  return data
-    .filter((d) => d.date === day)
-    .map(({ item, amount }) => ({ item, amount }))
-}
-// weekly
-function getWeeklyData(data: Expense[], day: string) {
-  const base = new Date(day)
-  base.setDate(base.getDate() - base.getDay())
-
-  const days = ["日", "月", "火", "水", "木", "金", "土"]
-  const map = new Map<string, number>()
-  for (const d of days) map.set(d, 0)
-
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(base)
-    d.setDate(base.getDate() + i)
-    const key = d.toISOString().slice(0, 10)
-    const total = data
-      .filter((row) => row.date === key)
-      .reduce((sum, row) => sum + row.amount, 0)
-    map.set(days[i], total)
-  }
-
-  return days.map((d) => ({
-    day: d,
-    amount: map.get(d) ?? 0,
-  }))
-}
-// monthly
-function getMonthlyCumulative(data: Expense[], year: string, month: string) {
-  const daysInMonth = new Date(Number(year), Number(month), 0).getDate()
-  const map: Record<string, number> = {}
-  for (const row of data) map[row.date] = (map[row.date] ?? 0) + row.amount
-
-  let running = 0
-  const result = []
-
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = `${year}-${month}-${String(d).padStart(2, "0")}`
-    running += map[date] ?? 0
-    result.push({
-      day: String(d),
-      total: running,
-    })
-  }
-
-  return result
-}
-
 // fetch data
 async function fetchExpense(
   token: string,
@@ -106,6 +57,21 @@ async function fetchExpense(
   return all
 }
 
+function getCalendarDateRange(year: string, month: string) {
+  const base = new Date(Number(year), Number(month) - 1, 1)
+  const start = startOfWeek(startOfMonth(base), { weekStartsOn: 0 })
+  const end = endOfWeek(endOfMonth(base), { weekStartsOn: 0 })
+
+  return {
+    start: format(start, "yyyy-MM-dd"),
+    end: format(end, "yyyy-MM-dd"),
+  }
+}
+
+function filterExpensesByRange(data: Expense[], start: string, end: string) {
+  return data.filter((row) => row.date >= start && row.date <= end)
+}
+
 export async function onRequest(context: RequestContext) {
   const token = context.env.GITHUB_API_TOKEN
   const owner = context.env.OWNER
@@ -123,10 +89,10 @@ export async function onRequest(context: RequestContext) {
   const url = new URL(context.request.url)
   const year = url.searchParams.get("year")
   const month = url.searchParams.get("month")
-  const day = url.searchParams.get("day")
+  // const day = url.searchParams.get("day")
 
-  if (!year || !month || !day)
-    return json({ error: "Invalid params" }, { status: 400 })
+  // if (!year || !month || !day)
+  if (!year || !month) return json({ error: "Invalid params" }, { status: 400 })
 
   try {
     const data = await fetchExpense(
@@ -136,13 +102,15 @@ export async function onRequest(context: RequestContext) {
       Number(year),
       Number(month)
     )
+    const { start, end } = getCalendarDateRange(year, month)
 
-    return json({
-      calendar: getDailyTotals(data),
-      detail: getDetail(data, day),
-      weekly: getWeeklyData(data, day),
-      monthly: getMonthlyCumulative(data, year, month),
-    })
+    // return json({
+    //   calendar: getDailyTotals(data, start, end),
+    //   detail: getDetail(data, day),
+    //   weekly: getWeeklyData(data, day),
+    //   monthly: getMonthlyCumulative(data, year, month),
+    // })
+    return json(filterExpensesByRange(data, start, end))
   } catch (error) {
     console.error("failed to load expenses", error)
     return json({ error: "Failed to load expenses" }, { status: 500 })
