@@ -1,0 +1,335 @@
+{
+  "object": "list",
+  "results": [
+    {
+      "object": "page",
+      "id": "380cb855-4be2-809f-b429-e5be7f222e15",
+      "created_time": "2026-06-15T00:04:00.000Z",
+      "last_edited_time": "2026-06-15T00:05:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "690e7289-54e7-4fd4-8d81-30c492595891"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "690e7289-54e7-4fd4-8d81-30c492595891"
+      },
+      "cover": null,
+      "icon": null,
+      "parent": {
+        "type": "data_source_id",
+        "data_source_id": "37bcb855-4be2-8032-a1c1-000bfb2613bc",
+        "database_id": "37bcb855-4be2-8067-9189-c9b7e2f4f070"
+      },
+      "in_trash": false,
+      "is_archived": false,
+      "is_locked": false,
+      "properties": {
+        "貸借区分": {
+          "id": "Bi%40%5B",
+          "type": "select",
+          "select": { "id": "zO\\f", "name": "貸方（右）", "color": "green" }
+        },
+        "分類（勘定科目DB）": {
+          "id": "Esuh",
+          "type": "rollup",
+          "rollup": {
+            "type": "array",
+            "array": [
+              {
+                "type": "select",
+                "select": { "id": "[<FW", "name": "負債", "color": "red" }
+              }
+            ],
+            "function": "show_original"
+          }
+        },
+        "取引概要（取引DB）": {
+          "id": "T%5EYw",
+          "type": "relation",
+          "relation": [{ "id": "37fcb855-4be2-81ae-806a-eb13c3d8e785" }],
+          "has_more": false
+        },
+        "勘定科目（勘定科目DB）": {
+          "id": "Ys%3B_",
+          "type": "relation",
+          "relation": [{ "id": "37ccb855-4be2-80dc-ad65-d284d435504d" }],
+          "has_more": false
+        },
+        "タイトル生成": { "id": "_X%3EB", "type": "button", "button": {} },
+        "取引日付（取引DB）": {
+          "id": "%60%7CXT",
+          "type": "rollup",
+          "rollup": {
+            "type": "array",
+            "array": [
+              {
+                "type": "date",
+                "date": {
+                  "start": "2026-06-14T12:22:00.000+09:00",
+                  "end": null,
+                  "time_zone": null
+                }
+              }
+            ],
+            "function": "show_original"
+          }
+        },
+        "増減": {
+          "id": "d%3DTs",
+          "type": "formula",
+          "formula": { "type": "number", "number": 880 }
+        },
+        "貸借一致確認用": {
+          "id": "dvfG",
+          "type": "formula",
+          "formula": { "type": "number", "number": -880 }
+        },
+        "金額": { "id": "w%3D%7Be", "type": "number", "number": 880 },
+        "仕訳帳用": {
+          "id": "yfbx",
+          "type": "formula",
+          "formula": {
+            "type": "string",
+            "string": "2026/06/14 @ダイソー、楽天ペイ"
+          }
+        },
+        "仕訳詳細": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "mention",
+              "mention": {
+                "type": "page",
+                "page": { "id": "37fcb855-4be2-81ae-806a-eb13c3d8e785" }
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "ダイソー、楽天ペイ",
+              "href": "https://app.notion.com/p/37fcb8554be281ae806aeb13c3d8e785"
+            },
+            {
+              "type": "text",
+              "text": { "content": "-貸方（右）-", "link": null },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "-貸方（右）-",
+              "href": null
+            },
+            {
+              "type": "mention",
+              "mention": {
+                "type": "page",
+                "page": { "id": "37ccb855-4be2-80dc-ad65-d284d435504d" }
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "10買掛金",
+              "href": "https://app.notion.com/p/37ccb8554be280dcad65d284d435504d"
+            },
+            {
+              "type": "text",
+              "text": { "content": "-880", "link": null },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "-880",
+              "href": null
+            }
+          ]
+        }
+      },
+      "url": "https://app.notion.com/p/880-380cb8554be2809fb429e5be7f222e15",
+      "public_url": null
+    },
+    {
+      "object": "page",
+      "id": "380cb855-4be2-803e-8a40-ed1ee7996f12",
+      "created_time": "2026-06-15T00:04:00.000Z",
+      "last_edited_time": "2026-06-15T00:04:00.000Z",
+      "created_by": {
+        "object": "user",
+        "id": "690e7289-54e7-4fd4-8d81-30c492595891"
+      },
+      "last_edited_by": {
+        "object": "user",
+        "id": "690e7289-54e7-4fd4-8d81-30c492595891"
+      },
+      "cover": null,
+      "icon": null,
+      "parent": {
+        "type": "data_source_id",
+        "data_source_id": "37bcb855-4be2-8032-a1c1-000bfb2613bc",
+        "database_id": "37bcb855-4be2-8067-9189-c9b7e2f4f070"
+      },
+      "in_trash": false,
+      "is_archived": false,
+      "is_locked": false,
+      "properties": {
+        "貸借区分": {
+          "id": "Bi%40%5B",
+          "type": "select",
+          "select": { "id": "Wi}>", "name": "借方（左）", "color": "blue" }
+        },
+        "分類（勘定科目DB）": {
+          "id": "Esuh",
+          "type": "rollup",
+          "rollup": {
+            "type": "array",
+            "array": [
+              {
+                "type": "select",
+                "select": { "id": "N@PU", "name": "費用", "color": "gray" }
+              }
+            ],
+            "function": "show_original"
+          }
+        },
+        "取引概要（取引DB）": {
+          "id": "T%5EYw",
+          "type": "relation",
+          "relation": [{ "id": "37fcb855-4be2-81ae-806a-eb13c3d8e785" }],
+          "has_more": false
+        },
+        "勘定科目（勘定科目DB）": {
+          "id": "Ys%3B_",
+          "type": "relation",
+          "relation": [{ "id": "37ccb855-4be2-8076-8204-df38cda22cbb" }],
+          "has_more": false
+        },
+        "タイトル生成": { "id": "_X%3EB", "type": "button", "button": {} },
+        "取引日付（取引DB）": {
+          "id": "%60%7CXT",
+          "type": "rollup",
+          "rollup": {
+            "type": "array",
+            "array": [
+              {
+                "type": "date",
+                "date": {
+                  "start": "2026-06-14T12:22:00.000+09:00",
+                  "end": null,
+                  "time_zone": null
+                }
+              }
+            ],
+            "function": "show_original"
+          }
+        },
+        "増減": {
+          "id": "d%3DTs",
+          "type": "formula",
+          "formula": { "type": "number", "number": 880 }
+        },
+        "貸借一致確認用": {
+          "id": "dvfG",
+          "type": "formula",
+          "formula": { "type": "number", "number": 880 }
+        },
+        "金額": { "id": "w%3D%7Be", "type": "number", "number": 880 },
+        "仕訳帳用": {
+          "id": "yfbx",
+          "type": "formula",
+          "formula": {
+            "type": "string",
+            "string": "2026/06/14 @ダイソー、楽天ペイ"
+          }
+        },
+        "仕訳詳細": {
+          "id": "title",
+          "type": "title",
+          "title": [
+            {
+              "type": "mention",
+              "mention": {
+                "type": "page",
+                "page": { "id": "37fcb855-4be2-81ae-806a-eb13c3d8e785" }
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "ダイソー、楽天ペイ",
+              "href": "https://app.notion.com/p/37fcb8554be281ae806aeb13c3d8e785"
+            },
+            {
+              "type": "text",
+              "text": { "content": "-借方（左）-", "link": null },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "-借方（左）-",
+              "href": null
+            },
+            {
+              "type": "mention",
+              "mention": {
+                "type": "page",
+                "page": { "id": "37ccb855-4be2-8076-8204-df38cda22cbb" }
+              },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "26雑費",
+              "href": "https://app.notion.com/p/37ccb8554be280768204df38cda22cbb"
+            },
+            {
+              "type": "text",
+              "text": { "content": "-880", "link": null },
+              "annotations": {
+                "bold": false,
+                "italic": false,
+                "strikethrough": false,
+                "underline": false,
+                "code": false,
+                "color": "default"
+              },
+              "plain_text": "-880",
+              "href": null
+            }
+          ]
+        }
+      },
+      "url": "https://app.notion.com/p/880-380cb8554be2803e8a40ed1ee7996f12",
+      "public_url": null
+    }
+  ]
+}
