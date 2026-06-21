@@ -156,12 +156,22 @@ export default function ExpensesPage() {
             onMonthChange={(m) => setCurrentMonth(m)}
           />
 
-          <WeeklyChart data={weeklyData} max={weeklyMax} />
-          <ExpenseDetail selected={selected} data={detailData} />
+          <WeeklyChart
+            data={weeklyData}
+            max={weeklyMax}
+            selection={selection}
+            range={range}
+          />
+          <ExpenseDetail
+            selected={selected}
+            data={detailData}
+            selection={selection}
+          />
           <MonthlyChart
             data={monthlyData}
             max={monthlyMax}
             month={currentMonth}
+            selection={selection}
           />
         </>
       )}

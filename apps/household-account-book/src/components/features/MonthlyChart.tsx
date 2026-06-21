@@ -7,7 +7,13 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
-import { Card, CardContent } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card"
 
 import type { Monthly } from "@/components/utils/types"
 import { formatYear } from "@/components/utils/date"
@@ -16,16 +22,20 @@ interface Props {
   data: Monthly[]
   max: number
   month: Date
+  selection: string
 }
 
 export default function MonthlyChart(props: Props) {
-  const { data, max, month } = props
+  const { data, max, month, selection } = props
   return (
     <Card className="w-full">
-      <CardContent className="space-y-3 p-4">
-        <h2 className="text-sm font-semibold">
-          月次累計出費額 ({formatYear(month)}年{month.getMonth() + 1}月)
-        </h2>
+      <CardHeader className="flex">
+        <CardTitle className="font-semibold">{selection} 月間推移</CardTitle>
+        <CardDescription className="mt-auto">
+          {formatYear(month)}年{month.getMonth() + 1}月
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         <div className="h-32 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>

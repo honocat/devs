@@ -1,4 +1,10 @@
-import { Card, CardContent } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 import { formatYear } from "@/components/utils/date"
 import type { Transaction } from "@/components/utils/types"
@@ -6,16 +12,21 @@ import type { Transaction } from "@/components/utils/types"
 interface Props {
   selected: Date
   data: Transaction[]
+  selection: string
 }
 
 export default function ExpenseDetail(props: Props) {
-  const { selected, data } = props
+  const { selected, data, selection } = props
   return (
     <Card className="w-full">
-      <CardContent className="space-y-3 p-4">
-        <h2 className="text-sm font-semibold">
-          {formatYear(selected)}年{selected.getMonth() + 1}月{selected.getDate()}日 出費詳細
-        </h2>
+      <CardHeader className="flex">
+        <CardTitle className="font-semibold">{selection}変動詳細</CardTitle>
+        <CardDescription className="mt-auto">
+          {formatYear(selected)}年{selected.getMonth() + 1}月
+          {selected.getDate()}日
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         {data.length > 0 ? (
           <ul className="space-y-1">
             {data.map((expense) => (
@@ -23,7 +34,9 @@ export default function ExpenseDetail(props: Props) {
                 key={`${expense.id}`}
                 className="flex justify-between text-sm"
               >
-                <span>{expense.summary}（{expense.category}）</span>
+                <span>
+                  {expense.summary}（{expense.category}）
+                </span>
                 <span>¥ {expense.amount.toLocaleString()}</span>
               </li>
             ))}
